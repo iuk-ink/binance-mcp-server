@@ -60,7 +60,22 @@ export const momentumTools: ToolDefinition[] = [
   },
   {
     name: 'indicator_tds', description: "Tom DeMark's Sequential Indicator (TDS)", schema: TDSInput,
-    handler: async (a: unknown) => { const { values } = a as { values: number[] }; try { const i = new TDS(); for (const v of values) i.add(v); return ok({ indicator: 'TDS', last: i.getResultOrThrow(), ...sig(i) }); } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); } }
+    handler: async (a: unknown) => {
+      const { values } = a as { values: number[] };
+      try {
+        // TDS 实际需要约 50+ 根 K 线才能完成完整计数，预检查避免误导性报错
+        if (values.length < 50) {
+          return ok({ error: true, message: 'TDS 需要至少 50 个数据点才能完成 Setup(9)+Countdown(13)完整计数' });
+        }
+        const i = new TDS();
+        for (const v of values) i.add(v);
+        return ok({ indicator: 'TDS', last: i.getResultOrThrow(), ...sig(i) });
+      } catch (e) {
+        logError(e as Error);
+        // 翻译 trading-signals 库的误导性报错 "minimum of 9 inputs"
+        return ok({ error: true, message: 'TDS 计算失败，需要约 50+ 根 K 线才能完成完整序列' });
+      }
+    },
   },
   {
     name: 'indicator_williams_r', description: '威廉指标 (Williams %R)', schema: WilliamsRInput,

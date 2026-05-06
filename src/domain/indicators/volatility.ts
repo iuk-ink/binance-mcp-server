@@ -26,7 +26,7 @@ export const volatilityTools: ToolDefinition[] = [
   },
   {
     name: 'indicator_bbands', description: '布林带 (Bollinger Bands)', schema: BBandsInput,
-    handler: async (a: unknown) => { const { values, interval, deviationMultiplier } = a as { values: number[]; interval: number; deviationMultiplier: number }; try { const i = new BollingerBands(interval, deviationMultiplier); let last: { lower: number; middle: number; upper: number } | null = null; for (const v of values) last = i.add(v); return ok({ indicator: 'BBANDS', interval, deviationMultiplier, result: last }); } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); } }
+    handler: async (a: unknown) => { const { values, interval, deviationMultiplier } = a as { values: number[]; interval: number; deviationMultiplier: number }; try { const i = new BollingerBands(interval, deviationMultiplier); let last: { lower: number; middle: number; upper: number } | null = null; for (const v of values) last = i.add(v); if (last === null) return ok({ error: true, message: `BBANDS 数据不足，需要至少 ${interval + 1} 个数据点才能计算出标准差` }); return ok({ indicator: 'BBANDS', interval, deviationMultiplier, result: last }); } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); } }
   },
   {
     name: 'indicator_bbw', description: '布林带宽度 (Bollinger Bands Width)', schema: BBWInput,
@@ -46,6 +46,6 @@ export const volatilityTools: ToolDefinition[] = [
   },
   {
     name: 'indicator_zigzag', description: 'Zig Zag 指标', schema: ZigZagInput,
-    handler: async (a: unknown) => { const { candles, deviation } = a as { candles: { high: number; low: number }[]; deviation: number }; try { const i = new ZigZag({ deviation }); let last: number | null = null; for (const c of candles) last = i.add(c); return ok({ indicator: 'ZigZag', deviation, last }); } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); } }
+    handler: async (a: unknown) => { const { candles, deviation } = a as { candles: { high: number; low: number }[]; deviation: number }; try { const i = new ZigZag({ deviation }); let last: number | null = null; for (const c of candles) last = i.add(c); if (last === null) return ok({ error: true, message: `ZigZag 数据不足，当前 ${candles.length} 根 K 线中未检测到确认的转折点（通常需要 50+ 根）` }); return ok({ indicator: 'ZigZag', deviation, last }); } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); } }
   },
 ];
