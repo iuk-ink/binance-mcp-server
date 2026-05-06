@@ -246,10 +246,12 @@ export const FuturesBatchOrdersSchema = z.object({
   batchOrders: z.array(z.object({
     symbol: z.string(),
     side: z.enum(['BUY', 'SELL']),
+    positionSide: z.enum(['LONG', 'SHORT']).optional().describe('持仓方向，双向持仓模式(Hedge Mode)必填'),
     type: z.enum(['LIMIT', 'MARKET', 'STOP', 'STOP_MARKET', 'TAKE_PROFIT_MARKET', 'TRAILING_STOP_MARKET']),
     quantity: z.string(),
     price: z.string().optional(),
     timeInForce: z.enum(['GTC', 'IOC', 'FOK']).optional().default('GTC'),
+    reduceOnly: z.boolean().optional().describe('仅减仓'),
   })).describe('批量订单，最多5单'),
 });
 

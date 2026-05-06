@@ -172,11 +172,10 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
       handler: async (args) => {
         const a = args as { symbol?: string };
         try {
-          const r = await c.futuresPrices() as Array<{ symbol: string }>;
+          // futuresPrices API 原生支持 symbol 参数，直接过滤比客户端查找更高效
+          const r = await c.futuresPrices(a.symbol ? { symbol: a.symbol } : undefined) as Record<string, string>;
           if (a.symbol) {
-            validateSymbol(a.symbol);
-            const match = r.find((p) => p.symbol === a.symbol);
-            return ok({ symbol: a.symbol, price: match || null, timestamp: Date.now() });
+            return ok({ symbol: a.symbol, price: r[a.symbol] || null, timestamp: Date.now() });
           }
           return ok({ prices: r, timestamp: Date.now() });
         } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
@@ -191,11 +190,12 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
       handler: async (args) => {
         const a = args as { symbol?: string };
         try {
-          const r = await c.futuresAllBookTickers() as Array<{ symbol: string }>;
+          // futuresAllBookTickers 返回 Object<symbol, ticker>，不是数组
+          const r = await c.futuresAllBookTickers() as Record<string, { symbol: string }>;
           if (a.symbol) {
             validateSymbol(a.symbol);
-            const match = r.find((t) => t.symbol === a.symbol);
-            return ok({ symbol: a.symbol, ticker: match || null, timestamp: Date.now() });
+            const ticker = r[a.symbol] || null;
+            return ok({ symbol: a.symbol, ticker, timestamp: Date.now() });
           }
           return ok({ tickers: r, timestamp: Date.now() });
         } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
