@@ -57,10 +57,9 @@ async function main(): Promise<void> {
     futuresPrices: async () => [],
     futuresAllBookTickers: async () => [],
     futuresMarkPrice: async () => [],
-    futuresAllForceOrders: async () => [],
   };
   const publicTools = createFuturesPublicTools(mockClient);
-  assert(publicTools.length === 12, `公开工具数 = ${publicTools.length}（期望 12）`);
+  assert(publicTools.length === 11, `公开工具数 = ${publicTools.length}（期望 11）`);
   const publicNames = publicTools.map(t => t.name);
   assert(publicNames.includes('futures_ping'), '包含 futures_ping');
   assert(publicNames.includes('futures_klines'), '包含 futures_klines');

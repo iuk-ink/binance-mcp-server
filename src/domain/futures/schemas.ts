@@ -96,19 +96,6 @@ export const FuturesMarkPriceSchema = z.object({
   symbol: z.string().optional().describe('交易对符号，不传则获取所有'),
 });
 
-/**
- * 期货强制平仓订单参数
- *
- * autoCloseType: LIQUIDATION 为强制平仓，ADL 为自动减仓。
- */
-export const FuturesForceOrdersSchema = z.object({
-  symbol: z.string().optional().describe('交易对符号'),
-  autoCloseType: z.enum(['LIQUIDATION', 'ADL']).optional().describe('强平类型：LIQUIDATION=强制平仓，ADL=自动减仓'),
-  startTime: z.number().optional().describe('起始时间戳(ms)'),
-  endTime: z.number().optional().describe('结束时间戳(ms)'),
-  limit: z.number().min(1).max(100).optional().default(50).describe('数量限制'),
-});
-
 // =============================================================================
 // 认证工具 Schemas（Phase 2C-2: 低风险查询）
 // =============================================================================

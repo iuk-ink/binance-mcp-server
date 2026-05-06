@@ -3,7 +3,7 @@
  *
  * @module domain/futures/public
  * @description
- * 提供期货市场公开数据的 MCP 工具，共 12 个。
+ * 提供期货市场公开数据的 MCP 工具，共 11 个。
  * 公开工具不需要 API Key，始终注册。
  *
  * 每个工具的 handler 遵循统一模式：
@@ -24,7 +24,6 @@ import {
   FuturesTradesSchema,
   FuturesDailyStatsSchema,
   FuturesMarkPriceSchema,
-  FuturesForceOrdersSchema,
 } from './schemas.js';
 import type { ToolDefinition } from '../../types/common.js';
 
@@ -184,24 +183,5 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
       },
     },
 
-    // ---- 强平订单 ----
-    {
-      name: 'futures_force_orders',
-      description: '获取期货强制平仓订单历史（LIQUIDATION/ADL）',
-      schema: FuturesForceOrdersSchema,
-      handler: async (args) => {
-        const a = args as { symbol?: string; autoCloseType?: string; startTime?: number; endTime?: number; limit: number };
-        try {
-          const params: Record<string, unknown> = {};
-          if (a.symbol) { validateSymbol(a.symbol); params.symbol = a.symbol; }
-          if (a.autoCloseType !== undefined) params.autoCloseType = a.autoCloseType;
-          if (a.startTime !== undefined) params.startTime = a.startTime;
-          if (a.endTime !== undefined) params.endTime = a.endTime;
-          if (a.limit) params.limit = a.limit;
-          const r = await c.futuresAllForceOrders(params) as unknown[];
-          return ok({ data: r, count: r.length, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
-      },
-    },
   ];
 }

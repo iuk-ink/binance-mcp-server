@@ -20,9 +20,9 @@ cp .env.example .env
 npm run dev   # 或：npm run build && npm start
 ```
 
-## 工具全景（73 个）
+## 工具全景（72 个）
 
-### 期货公开（12 个，无需 Key）
+### 期货公开（11 个，无需 Key）
 
 | 工具 | 功能 |
 |------|------|
@@ -37,7 +37,6 @@ npm run dev   # 或：npm run build && npm start
 | `futures_prices` | 全市场实时价 |
 | `futures_all_book_tickers` | 最优买卖挂单 |
 | `futures_mark_price` | 标记价格（强平依据） |
-| `futures_force_orders` | 强平订单历史 |
 
 ### 期货认证（17 个，需要 API Key）
 
@@ -169,7 +168,7 @@ src/
         └── index.ts
 ```
 
-**条件注册：** API Key 存在 → 73 工具；不存在 → 56 工具。
+**条件注册：** API Key 存在 → 72 工具；不存在 → 55 工具。
 
 ## 命令
 

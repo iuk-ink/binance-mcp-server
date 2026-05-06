@@ -274,7 +274,9 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
       handler: async (args) => {
         const a = args as { batchOrders: unknown[] };
         try {
-          const r = await c.futuresBatchOrders({ batchOrders: a.batchOrders });
+          // binance-api-node 底层用 encodeURIComponent 序列化参数，
+          // JavaScript 数组直接编码会变成 "[object Object]"，必须 JSON 序列化
+          const r = await c.futuresBatchOrders({ batchOrders: JSON.stringify(a.batchOrders) });
           return ok({ orders: r, count: (r as unknown[]).length, timestamp: Date.now() });
         } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
       },
