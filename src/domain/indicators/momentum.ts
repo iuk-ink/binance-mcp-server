@@ -6,10 +6,11 @@ import { AO, AC, MOM, CCI, CG, MACD, OBV, REI, ROC, RSI, StochasticOscillator, S
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { logError } from '../../utils/error-handling.js';
 import type { ToolDefinition } from '../../types/common.js';
+import { roundValue } from './format.js';
 import { AOInput, ACInput, MOMInput, CCIInput, CGInput, MACDInput, OBVInput, REIInput, ROCInput, RSIInput, StochInput, StochRSIInput, TDSInput, WilliamsRInput } from './schemas.js';
 
 function ok(data: unknown): CallToolResult {
-  return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+  return { content: [{ type: 'text', text: JSON.stringify(roundValue(data), null, 2) }] };
 }
 
 function sig(ind: unknown) { const s = (ind as { getSignal?: () => { state: string; hasChanged: boolean } }).getSignal?.(); return s ? { signal: s } : {}; }

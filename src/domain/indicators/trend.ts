@@ -6,12 +6,13 @@ import { SMA, EMA, DEMA, RMA, WMA, WSMA, SMA15, DMA, ADX, DX, PSAR, LinearRegres
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { logError } from '../../utils/error-handling.js';
 import type { ToolDefinition } from '../../types/common.js';
+import { roundValue } from './format.js';
 import { SMAInput, EMAInput, DEMAInput, RMAInput, WMAInput, WSMAInput, SMA15Input, DMAInput, DXInput, ADXInput, PSARInput, LinRegInput, VWAPInput } from './schemas.js';
 
 const ctors: Record<string, new (n: number) => { add(v: number): number | null; getResultOrThrow(): unknown }> = { EMA, RMA, SMA, WMA, WSMA };
 
 function ok(data: unknown): CallToolResult {
-  return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+  return { content: [{ type: 'text', text: JSON.stringify(roundValue(data), null, 2) }] };
 }
 
 function pickCtor(name?: string): new (n: number) => { add(v: number): number | null; getResultOrThrow(): unknown } {

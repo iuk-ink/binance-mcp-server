@@ -35,6 +35,20 @@ export const utilityTools: ToolDefinition[] = [
   },
   {
     name: 'util_weekday', description: '判断星期几（时区感知）', schema: WeekdayInput,
-    handler: async (a: unknown) => { const { timezone, date } = a as { timezone: string; date?: string }; try { const d = date ? new Date(date) : undefined; return ok({ function: 'weekday', timezone, date: date || 'today', isMonday: isMonday(timezone, d), isTuesday: isTuesday(timezone, d), isWednesday: isWednesday(timezone, d), isThursday: isThursday(timezone, d), isFriday: isFriday(timezone, d), isSaturday: isSaturday(timezone, d), isSunday: isSunday(timezone, d) }); } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); } }
+    handler: async (a: unknown) => {
+      const { timezone, date } = a as { timezone: string; date?: string };
+      try {
+        const d = date ? new Date(date) : undefined;
+        const bools: Record<string, boolean> = {
+          isMonday: isMonday(timezone, d), isTuesday: isTuesday(timezone, d),
+          isWednesday: isWednesday(timezone, d), isThursday: isThursday(timezone, d),
+          isFriday: isFriday(timezone, d), isSaturday: isSaturday(timezone, d),
+          isSunday: isSunday(timezone, d),
+        };
+        // 根据 boolean 推导出星期几字符串，更直观
+        const weekday = Object.keys(bools).find((k) => bools[k])?.replace('is', '') ?? null;
+        return ok({ function: 'weekday', timezone, date: date || 'today', weekday, ...bools });
+      } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+    },
   },
 ];

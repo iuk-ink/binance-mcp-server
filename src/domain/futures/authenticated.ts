@@ -134,7 +134,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
     /** 逐仓保证金调整 */
     {
       name: 'futures_position_margin',
-      description: '调整逐仓保证金（追加/减少）',
+      description: '调整逐仓保证金（追加/减少），操作后自动返回最新账户余额',
       schema: FuturesPositionMarginSchema,
       handler: async (args) => {
         const a = args as { symbol: string; amount: string; type: number; positionSide?: string };
@@ -143,7 +143,9 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           const params: Record<string, unknown> = { symbol: a.symbol, amount: a.amount, type: a.type };
           if (a.positionSide) params.positionSide = a.positionSide;
           const r = await c.futuresPositionMargin(params);
-          return ok({ ...(r as object), timestamp: Date.now() });
+          // 操作后查询最新账户余额，供用户确认资金变动
+          const balances = await c.futuresAccountBalance() as unknown;
+          return ok({ ...(r as object), balances, timestamp: Date.now() });
         } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
       },
     },

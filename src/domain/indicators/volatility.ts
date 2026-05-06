@@ -6,12 +6,13 @@ import { AccelerationBands, ATR, BollingerBands, BollingerBandsWidth, IQR, MAD, 
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { logError } from '../../utils/error-handling.js';
 import type { ToolDefinition } from '../../types/common.js';
+import { roundValue } from './format.js';
 import { ABandsInput, ATRInput, BBandsInput, BBWInput, IQRInput, MADInput, TRInput, ZigZagInput } from './schemas.js';
 
 const ctors: Record<string, unknown> = { EMA, SMA };
 
 function ok(data: unknown): CallToolResult {
-  return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+  return { content: [{ type: 'text', text: JSON.stringify(roundValue(data), null, 2) }] };
 }
 
 export const volatilityTools: ToolDefinition[] = [
