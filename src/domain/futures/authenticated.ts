@@ -213,17 +213,20 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
       },
     },
 
-    /** 修改订单 */
+    /** 修改订单 — 仅 orderId + symbol 必填，其余按需传 */
     {
       name: 'futures_update_order',
-      description: '修改期货订单（修改价格/数量等）',
+      description: '修改期货订单（修改价格/数量等。仅 orderId + symbol 必填，其余字段只传要改的）',
       schema: FuturesUpdateOrderSchema,
       handler: async (args) => {
         const a = args as Record<string, unknown>;
         try {
           validateSymbol(a.symbol as string);
-          const params: Record<string, unknown> = { orderId: a.orderId, symbol: a.symbol, side: a.side, type: a.type, quantity: a.quantity };
+          const params: Record<string, unknown> = { orderId: a.orderId, symbol: a.symbol };
           if (a.positionSide !== undefined) params.positionSide = a.positionSide;
+          if (a.side !== undefined) params.side = a.side;
+          if (a.type !== undefined) params.type = a.type;
+          if (a.quantity !== undefined) params.quantity = a.quantity;
           if (a.price !== undefined) params.price = a.price;
           const r = await c.futuresUpdateOrder(params);
           return ok({ ...(r as object), timestamp: Date.now() });
@@ -323,15 +326,19 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
       },
     },
 
-    /** 取消某交易对所有活跃订单（含条件单） */
+    /** 取消某交易对所有活跃订单（含条件单）— 危险操作需传 confirm="CONFIRM" */
     {
       name: 'futures_cancel_all_open_orders',
-      description: '取消指定交易对所有活跃订单（一键清仓）',
+      description: '取消指定交易对所有活跃订单。此操作不可撤销，必须传 confirm="CONFIRM" 确认',
       schema: FuturesCancelAllOpenOrdersSchema,
       handler: async (args) => {
-        const a = args as { symbol: string };
+        const a = args as { symbol: string; confirm: string };
         try {
           validateSymbol(a.symbol);
+          // 二次确认：必须传入 CONFIRM 才执行
+          if (a.confirm !== 'CONFIRM') {
+            return ok({ error: true, message: '危险操作：必须传入 confirm="CONFIRM" 以确认执行一键清仓' });
+          }
           const r = await c.futuresCancelAllOpenOrders({ symbol: a.symbol }) as unknown[];
           return ok({ symbol: a.symbol, cancelled: r, count: r.length, timestamp: Date.now() });
         } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }

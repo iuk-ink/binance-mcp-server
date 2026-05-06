@@ -96,6 +96,33 @@ export const FuturesMarkPriceSchema = z.object({
   symbol: z.string().optional().describe('交易对符号，不传则获取所有'),
 });
 
+/**
+ * 期货交易规则参数
+ *
+ * 支持按交易对过滤，避免全量返回 55k+ 行数据导致上下文溢出或触发限流。
+ */
+export const FuturesExchangeInfoSchema = z.object({
+  symbol: z.string().optional().describe('交易对符号，如 BTCUSDT。不传则获取全部交易对信息（数据量极大，建议传 symbol）'),
+});
+
+/**
+ * 期货全量价格参数
+ *
+ * 支持按交易对过滤单币种查询。
+ */
+export const FuturesPricesSchema = z.object({
+  symbol: z.string().optional().describe('交易对符号，如 BTCUSDT。不传则获取全部 600+ 交易对价格'),
+});
+
+/**
+ * 期货最优挂单参数
+ *
+ * 支持按交易对过滤。
+ */
+export const FuturesAllBookTickersSchema = z.object({
+  symbol: z.string().optional().describe('交易对符号，如 BTCUSDT。不传则获取全部交易对最优挂单'),
+});
+
 // =============================================================================
 // 认证工具 Schemas（Phase 2C-2: 低风险查询）
 // =============================================================================
@@ -188,14 +215,14 @@ export const FuturesOrderSchema = z.object({
   closePosition: z.boolean().optional().describe('全仓平仓（仅 STOP_MARKET/TAKE_PROFIT_MARKET 支持，不支持 MARKET/LIMIT/TRAILING_STOP_MARKET）'),
 });
 
-/** 修改期货订单 */
+/** 修改期货订单 — 仅 orderId + symbol 必填，其余按需传 */
 export const FuturesUpdateOrderSchema = z.object({
   orderId: z.number().describe('订单ID'),
   symbol: z.string().describe('交易对符号'),
-  side: z.enum(['BUY', 'SELL']).describe('买卖方向'),
+  side: z.enum(['BUY', 'SELL']).optional().describe('买卖方向（只改价格时可不传）'),
   positionSide: z.enum(['LONG', 'SHORT']).optional().describe('持仓方向，双向持仓模式必填'),
-  type: z.enum(['LIMIT', 'MARKET', 'STOP', 'STOP_MARKET', 'TAKE_PROFIT', 'TAKE_PROFIT_MARKET', 'TRAILING_STOP_MARKET']).describe('订单类型'),
-  quantity: z.string().describe('数量'),
+  type: z.enum(['LIMIT', 'MARKET', 'STOP', 'STOP_MARKET', 'TAKE_PROFIT', 'TAKE_PROFIT_MARKET', 'TRAILING_STOP_MARKET']).optional().describe('订单类型（只改价格时可不传）'),
+  quantity: z.string().optional().describe('数量（只改价格时可不传）'),
   price: z.string().optional().describe('价格'),
 });
 
@@ -246,9 +273,10 @@ export const FuturesCancelOrderSchema = z.object({
   clientAlgoId: z.string().optional().describe('条件单客户端ID'),
 });
 
-/** 取消全部活跃订单 */
+/** 取消全部活跃订单 — 危险操作，需传 confirm="CONFIRM" 确认 */
 export const FuturesCancelAllOpenOrdersSchema = z.object({
   symbol: z.string().describe('交易对符号'),
+  confirm: z.literal('CONFIRM').describe('输入 CONFIRM 确认执行一键清仓。此操作不可撤销'),
 });
 
 /** 查询活跃订单（含条件单） */

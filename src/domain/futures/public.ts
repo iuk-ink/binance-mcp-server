@@ -24,6 +24,9 @@ import {
   FuturesTradesSchema,
   FuturesDailyStatsSchema,
   FuturesMarkPriceSchema,
+  FuturesExchangeInfoSchema,
+  FuturesPricesSchema,
+  FuturesAllBookTickersSchema,
 } from './schemas.js';
 import type { ToolDefinition } from '../../types/common.js';
 
@@ -61,10 +64,20 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
     {
       name: 'futures_exchange_info',
       description: '获取期货交易所交易规则和交易对信息（费率、最小下单量等）',
-      schema: FuturesSymbolSchema,
-      handler: async () => {
-        try { const r = await c.futuresExchangeInfo(); return ok(r); }
-        catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+      schema: FuturesExchangeInfoSchema,
+      handler: async (args) => {
+        const a = args as { symbol?: string };
+        try {
+          const r = await c.futuresExchangeInfo();
+          // 传了 symbol 则过滤到单个交易对，避免 55k+ 行全量数据
+          if (a.symbol) {
+            validateSymbol(a.symbol);
+            const symbols = (r as { symbols?: Array<{ symbol: string }> }).symbols || [];
+            const info = symbols.find((s) => s.symbol === a.symbol);
+            return ok({ symbol: a.symbol, info: info || null, timestamp: Date.now() });
+          }
+          return ok(r);
+        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -150,22 +163,38 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
     // ---- 当前价格 ----
     {
       name: 'futures_prices',
-      description: '获取期货当前所有交易对价格',
-      schema: FuturesSymbolSchema,
-      handler: async () => {
-        try { const r = await c.futuresPrices(); return ok({ prices: r, timestamp: Date.now() }); }
-        catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+      description: '获取期货当前交易对价格（支持按 symbol 过滤单个交易对）',
+      schema: FuturesPricesSchema,
+      handler: async (args) => {
+        const a = args as { symbol?: string };
+        try {
+          const r = await c.futuresPrices() as Array<{ symbol: string }>;
+          if (a.symbol) {
+            validateSymbol(a.symbol);
+            const match = r.find((p) => p.symbol === a.symbol);
+            return ok({ symbol: a.symbol, price: match || null, timestamp: Date.now() });
+          }
+          return ok({ prices: r, timestamp: Date.now() });
+        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
     // ---- 最优挂单 ----
     {
       name: 'futures_all_book_tickers',
-      description: '获取所有期货交易对的最优买卖挂单（买一/卖一）',
-      schema: FuturesSymbolSchema,
-      handler: async () => {
-        try { const r = await c.futuresAllBookTickers(); return ok({ tickers: r, timestamp: Date.now() }); }
-        catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+      description: '获取期货交易对的最优买卖挂单/买一卖一（支持按 symbol 过滤）',
+      schema: FuturesAllBookTickersSchema,
+      handler: async (args) => {
+        const a = args as { symbol?: string };
+        try {
+          const r = await c.futuresAllBookTickers() as Array<{ symbol: string }>;
+          if (a.symbol) {
+            validateSymbol(a.symbol);
+            const match = r.find((t) => t.symbol === a.symbol);
+            return ok({ symbol: a.symbol, ticker: match || null, timestamp: Date.now() });
+          }
+          return ok({ tickers: r, timestamp: Date.now() });
+        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
