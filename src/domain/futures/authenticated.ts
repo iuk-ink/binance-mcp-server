@@ -295,8 +295,9 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
         try {
           validateSymbol(a.symbol as string);
           const params: Record<string, unknown> = { symbol: a.symbol };
-          if (a.orderIdList) params.orderIdList = a.orderIdList;
-          if (a.origClientOrderIdList) params.origClientOrderIdList = a.origClientOrderIdList;
+          // binance-api-node 需要 JSON 字符串，handler 内自动序列化数组参数
+          if (a.orderIdList) params.orderIdList = JSON.stringify(a.orderIdList);
+          if (a.origClientOrderIdList) params.origClientOrderIdList = JSON.stringify(a.origClientOrderIdList);
           const r = await c.futuresCancelBatchOrders(params);
           return ok({ cancelled: r, timestamp: Date.now() });
         } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
@@ -335,17 +336,19 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
         const a = args as { symbol: string; confirm: string };
         try {
           validateSymbol(a.symbol);
-          // 二次确认：必须传入 CONFIRM 才执行
           if (a.confirm !== 'CONFIRM') {
             return ok({ error: true, message: '危险操作：必须传入 confirm="CONFIRM" 以确认执行一键清仓' });
           }
-          const r = await c.futuresCancelAllOpenOrders({ symbol: a.symbol }) as unknown[];
-          return ok({ symbol: a.symbol, cancelled: r, count: r.length, timestamp: Date.now() });
+          // 取消前先查询活跃订单，返回被取消的订单 ID 供用户确认
+          const beforeOpen = await c.futuresOpenOrders({ symbol: a.symbol }) as Array<{ orderId: number }>;
+          const cancelledIds = beforeOpen.map((o) => o.orderId);
+          await c.futuresCancelAllOpenOrders({ symbol: a.symbol });
+          return ok({ symbol: a.symbol, cancelledCount: cancelledIds.length, cancelledOrderIds: cancelledIds, timestamp: Date.now() });
         } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
-    /** 查询活跃订单（含条件单） */
+    /** 查询活跃订单（含条件单并行查询） */
     {
       name: 'futures_open_orders',
       description: '查询期货当前活跃订单（含止损/止盈/追踪等条件单）',
@@ -353,8 +356,16 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
       handler: async (args) => {
         const a = args as { symbol?: string };
         try {
-          const r = await c.futuresOpenOrders(a.symbol ? { symbol: a.symbol } : undefined) as unknown[];
-          return ok({ orders: r, count: r.length, timestamp: Date.now() });
+          const params = a.symbol ? { symbol: a.symbol } : undefined;
+          // 并行查询普通单和条件单（Binance REST 分两个端点）
+          const ordersPromise = c.futuresOpenOrders(params) as Promise<unknown[]>;
+          const algoFn = (c as Record<string, (...args: unknown[]) => unknown>).futuresOpenAlgoOrders;
+          const algoPromise: Promise<unknown[]> = algoFn
+            ? (algoFn(params) as Promise<unknown[]>).catch(() => [])
+            : Promise.resolve([]);
+          const [orders, algoOrders] = await Promise.all([ordersPromise, algoPromise]);
+          const total = (orders?.length ?? 0) + (algoOrders?.length ?? 0);
+          return ok({ orders, algoOrders, count: total, timestamp: Date.now() });
         } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
       },
     },

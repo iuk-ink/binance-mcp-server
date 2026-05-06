@@ -253,11 +253,11 @@ export const FuturesBatchOrdersSchema = z.object({
   })).describe('批量订单，最多5单'),
 });
 
-/** 批量取消订单 */
+/** 批量取消订单 — 参数统一为数组类型，handler 内自动 JSON 序列化 */
 export const FuturesCancelBatchOrdersSchema = z.object({
   symbol: z.string().describe('交易对符号'),
-  orderIdList: z.string().optional().describe('订单ID列表JSON，如"[123,456]"'),
-  origClientOrderIdList: z.string().optional().describe('客户端订单ID列表JSON'),
+  orderIdList: z.array(z.number()).optional().describe('要取消的订单ID列表，如 [123, 456]'),
+  origClientOrderIdList: z.array(z.string()).optional().describe('要取消的客户端订单ID列表'),
 });
 
 // =============================================================================

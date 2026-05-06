@@ -16,6 +16,7 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { validateSymbol } from '../../utils/validation.js';
 import { logError } from '../../utils/error-handling.js';
+import { withRetry } from '../../utils/rate-limiter.js';
 import {
   FuturesSymbolSchema,
   FuturesKlinesSchema,
@@ -105,7 +106,10 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
         const a = args as { symbol: string; interval: string; limit: number };
         try {
           validateSymbol(a.symbol);
-          const r = await c.futuresCandles({ symbol: a.symbol, interval: a.interval, limit: a.limit });
+          // K 线接口是高权重请求，极易触发 IP 限流，使用指数退避重试
+          const r = await withRetry(async () =>
+            c.futuresCandles({ symbol: a.symbol, interval: a.interval, limit: a.limit }),
+          );
           return ok({ symbol: a.symbol, interval: a.interval, data: r, timestamp: Date.now() });
         } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
       },
