@@ -7,7 +7,7 @@
 
 🌐 **Language:** [English](README.en.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [简体中文](../README.md)
 
-Model Context Protocol (MCP) ベースの **Binance 先物 API サーバー** — 73 個のツールで先物相場・注文執行・テクニカル指標の 3 領域をカバーします。
+Model Context Protocol (MCP) ベースの **Binance 先物 API サーバー** — 76 個のツールで先物相場・注文執行・テクニカル指標の 3 領域をカバーします。
 
 ## クイックスタート
 
@@ -20,9 +20,9 @@ cp .env.example .env
 npm run dev   # または: npm run build && npm start
 ```
 
-## ツール一覧（全 73 個）
+## ツール一覧（全 76 個）
 
-### 先物パブリック（12 個、Key 不要）
+### 先物パブリック（11 個、Key 不要）
 
 | ツール | 機能 |
 |------|------|
@@ -37,9 +37,8 @@ npm run dev   # または: npm run build && npm start
 | `futures_prices` | 全銘柄のリアルタイム価格 |
 | `futures_all_book_tickers` | 全銘柄の最良気配 |
 | `futures_mark_price` | マーク価格（清算基準） |
-| `futures_force_orders` | ロスカット注文履歴 |
 
-### 先物認証（17 個、Key 必要）
+### 先物認証（19 個、Key 必要）
 
 | 分類 | ツール | 機能 |
 |------|------|------|
@@ -58,8 +57,10 @@ npm run dev   # または: npm run build && npm start
 | | `futures_batch_orders` | 一括注文（≤5） |
 | | `futures_cancel_batch_orders` | 一括取消 |
 | ❌ 取消とアクティブ | `futures_cancel_order` | 単一取消（条件付き注文の algoId 対応） |
-| | `futures_cancel_all_open_orders` | 全建玉取消 |
+| | `futures_cancel_all_open_orders` | 全建玉取消（確認必要） |
 | | `futures_open_orders` | 現在の有効注文一覧 |
+| 🛠️ ユーティリティ | `futures_account_report` | 口座全体レポート（残高+ポジション+注文） |
+| | `futures_quick_order` | ワンクリック損切り/利確（％ずらしで自動計算） |
 
 #### 注文タイプ早見表
 
@@ -82,14 +83,16 @@ npm run dev   # または: npm run build && npm start
 | トレーリングストップ決済 | `type=TRAILING_STOP_MARKET, closePosition=true, activationPrice=活性化価格, callbackRate="1"` |
 | 条件付き注文取消 | `futures_cancel_order(symbol, algoId=xxx)` |
 
-### テクニカル指標（44 個、Key 不要）
+### テクニカル指標（46 個、Key 不要）
 
 | 分類 | 数 | ツール一覧 |
 |------|:--:|------|
-| **トレンド** | 13 | `indicator_sma`, `indicator_ema`, `indicator_dema`, `indicator_rma`, `indicator_wma`, `indicator_wsma`, `indicator_sma15`, `indicator_dma`, `indicator_dx`, `indicator_adx`, `indicator_linreg`, `indicator_psar`, `indicator_vwap` |
-| **モメンタム** | 14 | `indicator_ao`, `indicator_ac`, `indicator_mom`, `indicator_cci`, `indicator_cg`, `indicator_macd`, `indicator_obv`, `indicator_rei`, `indicator_roc`, `indicator_rsi`, `indicator_stoch`, `indicator_stoch_rsi`, `indicator_tds`, `indicator_williams_r` |
-| **ボラティリティ** | 8 | `indicator_abands`, `indicator_atr`, `indicator_bbands`, `indicator_bbw`, `indicator_iqr`, `indicator_mad`, `indicator_tr`, `indicator_zigzag` |
+| **トレンド** | 12 | `indicator_sma`, `indicator_ema`, `indicator_dema`, `indicator_rma`, `indicator_wma`, `indicator_wsma`, `indicator_dma`, `indicator_dx`, `indicator_adx`, `indicator_linreg`, `indicator_psar`, `indicator_vwap` |
+| **モメンタム** | 11 | `indicator_ao`, `indicator_mom`, `indicator_cci`, `indicator_macd`, `indicator_obv`, `indicator_roc`, `indicator_rsi`, `indicator_stoch`, `indicator_stoch_rsi`, `indicator_tds`, `indicator_williams_r` |
+| **ボラティリティ** | 5 | `indicator_abands`, `indicator_atr`, `indicator_bbands`, `indicator_iqr`, `indicator_zigzag` |
 | **ユーティリティ** | 9 | `util_average`, `util_grid`, `util_max`, `util_min`, `util_median`, `util_quartile`, `util_stddev`, `util_streaks`, `util_weekday` |
+| **シグナル** | 4 | `signal_ema_cross`, `signal_macd_rsi`, `signal_bb_rsi`, `signal_ma_cross` |
+| **リスク** | 5 | `util_sharpe`, `util_max_drawdown`, `util_calmar`, `util_win_rate`, `util_var` |
 
 ## 環境設定
 
@@ -155,21 +158,23 @@ src/
 ├── server.ts             ← McpServer 作成 + 条件付き登録
 ├── config/binance.ts     ← 設定（エンドポイント / プロキシ / 認証）
 ├── types/common.ts       ← ToolDefinition ジェネリック型
-├── utils/                ← ロガー / バリデーション / エラーサニタイズ
+├── utils/                ← ロガー / バリデーション / エラーサニタイズ / レート制限
 └── domain/
-    ├── futures/          ← 先物: パブリック (12) + 認証 (17)
-    │   ├── schemas.ts    ← Zod スキーマ（42 個の入力定義）
+    ├── futures/          ← 先物: パブリック (11) + 認証 (19)
+    │   ├── schemas.ts    ← Zod スキーマ
     │   ├── public.ts     ← パブリックハンドラ
     │   ├── authenticated.ts ← 認証ハンドラ
     │   └── index.ts
-    └── indicators/       ← テクニカル指標 (44)
+    └── indicators/       ← テクニカル指標 (46)
         ├── schemas.ts    ← 指標パラメータスキーマ
-        ├── trend.ts (13) / momentum.ts (14)
-        ├── volatility.ts (8) / utility.ts (9)
+        ├── format.ts     ← 精度フォーマッタ
+        ├── trend.ts (12) / momentum.ts (11)
+        ├── volatility.ts (5) / utility.ts (9)
+        ├── signals.ts (4) / risk.ts (5)
         └── index.ts
 ```
 
-**条件付き登録:** API Key あり → 73 ツール; なし → 56 ツール。
+**条件付き登録:** API Key あり → 76 ツール; なし → 57 ツール。
 
 ## コマンド
 

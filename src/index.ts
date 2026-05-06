@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Binance MCP Server v2.0 — 应用入口
+ * Binance MCP Server — 应用入口
  *
  * @module index
  * @description

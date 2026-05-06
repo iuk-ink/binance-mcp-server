@@ -1,5 +1,5 @@
 /**
- * Binance MCP Server v2.0 — 组合信号工具 (4 个)
+ * Binance MCP Server — 组合信号工具 (4 个)
  *
  * @module domain/indicators/signals
  * @description

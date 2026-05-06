@@ -1,6 +1,14 @@
 /**
- * Binance MCP Server v2.0 — 趋势类技术指标工具 (12 个)
+ * Binance MCP Server — 趋势类技术指标工具 (12 个)
+ *
  * @module domain/indicators/trend
+ * @description
+ * 基于 trading-signals 库的趋势类指标封装。
+ *
+ * 取值方式差异说明：
+ * - SMA/WMA/WSMA 的前 N-1 次 add() 返回 null（无足够数据），使用 getResult() 取 last
+ * - EMA/DEMA/RMA 的内部平滑有回退逻辑，数据足够后用 getResultOrThrow() 确保非空
+ * - DMA/DX/ADX/PSAR 等复合指标同样使用 getResultOrThrow()
  */
 import { SMA, EMA, DEMA, RMA, WMA, WSMA, DMA, ADX, DX, PSAR, LinearRegression, VWAP } from 'trading-signals';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -9,12 +17,23 @@ import type { ToolDefinition } from '../../types/common.js';
 import { roundValue } from './format.js';
 import { SMAInput, EMAInput, DEMAInput, RMAInput, WMAInput, WSMAInput, DMAInput, DXInput, ADXInput, PSARInput, LinRegInput, VWAPInput } from './schemas.js';
 
+/** 平滑算法名称 → 构造函数映射，供 DMA/DX/ADX 的内部平滑选择用 */
 const ctors: Record<string, new (n: number) => { add(v: number): number | null; getResultOrThrow(): unknown }> = { EMA, RMA, SMA, WMA, WSMA };
 
 function ok(data: unknown): CallToolResult {
   return { content: [{ type: 'text', text: JSON.stringify(roundValue(data), null, 2) }] };
 }
 
+/**
+ * 根据平滑类型名称查找对应的构造函数
+ *
+ * @description
+ * 从 ctors 映射表中查找对应平滑算法（EMA/RMA/SMA/WMA/WSMA）的构造函数。
+ * 未传入或传入未知名称时默认回退到 EMA。
+ *
+ * @param name - 平滑类型名称，可选。不传默认 'EMA'
+ * @returns 对应的构造函数
+ */
 function pickCtor(name?: string): new (n: number) => { add(v: number): number | null; getResultOrThrow(): unknown } {
   return ctors[name || 'EMA'] || EMA;
 }

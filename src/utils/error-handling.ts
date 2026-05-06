@@ -1,5 +1,5 @@
 /**
- * Binance MCP Server v2.0 — 错误处理模块
+ * Binance MCP Server — 错误处理模块
  *
  * @module utils/error-handling
  * @description

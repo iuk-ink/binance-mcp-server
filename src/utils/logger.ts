@@ -1,5 +1,5 @@
 /**
- * Binance MCP Server v2.0 — 结构化日志模块
+ * Binance MCP Server — 结构化日志模块
  *
  * @module utils/logger
  * @description

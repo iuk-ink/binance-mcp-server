@@ -1,5 +1,5 @@
 /**
- * Binance MCP Server v2.0 — MCP 服务器核心
+ * Binance MCP Server — MCP 服务器核心
  *
  * @module server
  * @description
@@ -83,7 +83,7 @@ function registerAll(server: McpServer, tools: ToolDefinition[]): void {
  * - Schema 定义: 从手写 JSON Schema + Zod 双重定义迁移到仅 Zod 自动生成
  * - 工具注册: 从 Map<string, any> 迁移到泛型 ToolDefinition 数组
  * - 配置范围: 切换为纯期货 REST 端点
- * - 功能域: 从现货 10 个工具迁移到期货 26 个 + 指标 44 个（Phase 2 完整版）
+ * - 功能域: 期货公开+认证 (30) + 技术指标 (46) = 76 个工具
  *
  * @returns 配置完成的 McpServer 实例
  */
@@ -143,5 +143,5 @@ export async function startServer(): Promise<void> {
   const server = await createServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  logger.info('Binance MCP Server v2.0 已启动');
+  logger.info('Binance MCP Server v2.0.1 已启动');
 }

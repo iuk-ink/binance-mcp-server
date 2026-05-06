@@ -1,18 +1,26 @@
 /**
- * Binance MCP Server v2.0 — 技术指标 Zod Schema 定义
+ * Binance MCP Server — 技术指标 Zod Schema 定义
  *
  * @module domain/indicators/schemas
- * @description 定义所有技术指标和工具函数的输入参数 Zod Schema。
+ * @description
+ * 定义所有技术指标和工具函数的输入参数 Zod Schema。
+ * Schema 分类：趋势(12) / 动量(11) / 波动率(5) / 工具函数(9) / 组合信号(4) / 风险绩效(5)。
+ *
+ * 共享类型说明：
+ * - Interval = z.number().min(2)   — 计算周期，最少 2（少于 2 的周期无意义）
+ * - PriceArr = z.array(z.number()).min(1) — 价格数组，最少 1 个值（Zod 校验用，实际指标需要更多）
+ * - HLC / OHLCV           — 各指标按需选择对应 K 线格式
  */
 
 import { z } from 'zod';
 
-/** 计算周期，最小 2 */
+/** 计算周期，最小 2（周期 1 等同于不计算） */
 const Interval = z.number().min(2).describe('计算周期');
+/** 价格数组，最小 1 个值。注意：实际指标通常需要 ≥ interval+1 个数据点才有效 */
+const PriceArr = z.array(z.number()).min(1).describe('价格数组');
 /** 平滑类型可选值（不同指标的默认值不同，如 DMA/ADX 默认 EMA，ABANDS 默认 SMA） */
 const Smooth = z.enum(['EMA', 'RMA', 'SMA', 'WMA', 'WSMA']).optional().describe('平滑类型');
 
-const PriceArr = z.array(z.number()).min(1).describe('价格数组');
 const HighLow = z.array(z.object({ high: z.number(), low: z.number() })).min(1).describe('最高价/最低价数组');
 const HLC = z.array(z.object({ high: z.number(), low: z.number(), close: z.number() })).min(1).describe('HLC 数组');
 const OHLCV = z.array(z.object({ open: z.number(), high: z.number(), low: z.number(), close: z.number(), volume: z.number() })).min(1).describe('OHLCV 数组');

@@ -1,6 +1,15 @@
 /**
- * Binance MCP Server v2.0 — 动量类技术指标工具 (11 个)
+ * Binance MCP Server — 动量类技术指标工具 (11 个)
+ *
  * @module domain/indicators/momentum
+ * @description
+ * 基于 trading-signals 库的动量/速度类指标封装。
+ * 多数指标通过 sig() 辅助函数提取 getSignal() 的交叉/超买超卖状态。
+ *
+ * 各指标取值方式与趋势类基本一致：
+ * - AO/PSAR 等通过 add() 返回值累积取 last
+ * - RSI/MACD/CCI 等通过 getResultOrThrow() 确保非空
+ * - TDS 需要 50+ 数据点，handler 内做了预检查
  */
 import { AO, MOM, CCI, MACD, OBV, ROC, RSI, StochasticOscillator, StochasticRSI, TDS, WilliamsR, EMA, DEMA, SMA } from 'trading-signals';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -13,6 +22,14 @@ function ok(data: unknown): CallToolResult {
   return { content: [{ type: 'text', text: JSON.stringify(roundValue(data), null, 2) }] };
 }
 
+/**
+ * 从指标实例提取 trading-signals 库的交易信号
+ *
+ * @description
+ * 部分指标（RSI、MACD、CCI 等）提供 getSignal() 方法，
+ * 返回交叉/超买超卖等状态判断。
+ * 通过可选链安全调用，不支持信号的指标返回空对象（展开后无影响）。
+ */
 function sig(ind: unknown) { const s = (ind as { getSignal?: () => { state: string; hasChanged: boolean } }).getSignal?.(); return s ? { signal: s } : {}; }
 
 export const momentumTools: ToolDefinition[] = [

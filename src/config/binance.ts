@@ -1,5 +1,5 @@
 /**
- * Binance MCP Server v2.0 — 配置管理模块
+ * Binance MCP Server — 配置管理模块
  *
  * @module config/binance
  * @description
@@ -105,6 +105,6 @@ export function hasApiCredentials(): boolean {
 export function getServerInfo(): { name: string; version: string } {
   return {
     name: process.env.MCP_SERVER_NAME || 'binance-mcp-server',
-    version: process.env.MCP_SERVER_VERSION || '2.0.0',
+    version: process.env.MCP_SERVER_VERSION || '2.0.1',
   };
 }

@@ -7,7 +7,7 @@
 
 🌐 **Language:** [English](README.en.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [简体中文](../README.md)
 
-A **Binance Futures API server** built on Model Context Protocol (MCP) — 73 tools covering market data, order execution, and technical indicators
+A **Binance Futures API server** built on Model Context Protocol (MCP) — 76 tools covering market data, order execution, and technical indicators.
 
 ## Quick Start
 
@@ -20,9 +20,9 @@ cp .env.example .env
 npm run dev   # or: npm run build && npm start
 ```
 
-## Tools Overview (73 total)
+## Tools Overview (76 total)
 
-### Futures Public (12 tools, no Key required)
+### Futures Public (11 tools, no Key required)
 
 | Tool | Function |
 |------|------|
@@ -37,9 +37,8 @@ npm run dev   # or: npm run build && npm start
 | `futures_prices` | All market real-time prices |
 | `futures_all_book_tickers` | Best bid/ask for all symbols |
 | `futures_mark_price` | Mark price (liquidation basis) |
-| `futures_force_orders` | Liquidation order history |
 
-### Futures Authenticated (17 tools, Key required)
+### Futures Authenticated (19 tools, Key required)
 
 | Category | Tool | Function |
 |------|------|------|
@@ -58,8 +57,10 @@ npm run dev   # or: npm run build && npm start
 | | `futures_batch_orders` | Batch orders (≤5) |
 | | `futures_cancel_batch_orders` | Batch cancel |
 | ❌ Cancel & Active | `futures_cancel_order` | Cancel single (supports algoId) |
-| | `futures_cancel_all_open_orders` | Cancel all open orders |
+| | `futures_cancel_all_open_orders` | Cancel all open orders (requires confirmation) |
 | | `futures_open_orders` | Current open orders |
+| 🛠️ Utilities | `futures_account_report` | Account overview (balance + positions + orders) |
+| | `futures_quick_order` | One-click stop loss / take profit (auto-calculates trigger price) |
 
 #### Order Type Cheat Sheet
 
@@ -82,14 +83,16 @@ npm run dev   # or: npm run build && npm start
 | Trailing stop close | `type=TRAILING_STOP_MARKET, closePosition=true, activationPrice=activation, callbackRate="1"` |
 | Cancel conditional order | `futures_cancel_order(symbol, algoId=xxx)` |
 
-### Technical Indicators (44 tools, no Key required)
+### Technical Indicators (46 tools, no Key required)
 
 | Category | Count | Tools |
 |------|:--:|------|
-| **Trend** | 13 | `indicator_sma`, `indicator_ema`, `indicator_dema`, `indicator_rma`, `indicator_wma`, `indicator_wsma`, `indicator_sma15`, `indicator_dma`, `indicator_dx`, `indicator_adx`, `indicator_linreg`, `indicator_psar`, `indicator_vwap` |
-| **Momentum** | 14 | `indicator_ao`, `indicator_ac`, `indicator_mom`, `indicator_cci`, `indicator_cg`, `indicator_macd`, `indicator_obv`, `indicator_rei`, `indicator_roc`, `indicator_rsi`, `indicator_stoch`, `indicator_stoch_rsi`, `indicator_tds`, `indicator_williams_r` |
-| **Volatility** | 8 | `indicator_abands`, `indicator_atr`, `indicator_bbands`, `indicator_bbw`, `indicator_iqr`, `indicator_mad`, `indicator_tr`, `indicator_zigzag` |
+| **Trend** | 12 | `indicator_sma`, `indicator_ema`, `indicator_dema`, `indicator_rma`, `indicator_wma`, `indicator_wsma`, `indicator_dma`, `indicator_dx`, `indicator_adx`, `indicator_linreg`, `indicator_psar`, `indicator_vwap` |
+| **Momentum** | 11 | `indicator_ao`, `indicator_mom`, `indicator_cci`, `indicator_macd`, `indicator_obv`, `indicator_roc`, `indicator_rsi`, `indicator_stoch`, `indicator_stoch_rsi`, `indicator_tds`, `indicator_williams_r` |
+| **Volatility** | 5 | `indicator_abands`, `indicator_atr`, `indicator_bbands`, `indicator_iqr`, `indicator_zigzag` |
 | **Utility** | 9 | `util_average`, `util_grid`, `util_max`, `util_min`, `util_median`, `util_quartile`, `util_stddev`, `util_streaks`, `util_weekday` |
+| **Signals** | 4 | `signal_ema_cross`, `signal_macd_rsi`, `signal_bb_rsi`, `signal_ma_cross` |
+| **Risk** | 5 | `util_sharpe`, `util_max_drawdown`, `util_calmar`, `util_win_rate`, `util_var` |
 
 ## Environment Configuration
 
@@ -155,21 +158,23 @@ src/
 ├── server.ts             ← McpServer creation + conditional registration
 ├── config/binance.ts     ← Config (endpoint / proxy / auth)
 ├── types/common.ts       ← ToolDefinition generic
-├── utils/                ← Logger / validation / error sanitization
+├── utils/                ← Logger / validation / error sanitization / rate limiter
 └── domain/
-    ├── futures/          ← Futures: public (12) + authenticated (17)
-    │   ├── schemas.ts    ← Zod Schema (42 input definitions)
+    ├── futures/          ← Futures: public (11) + authenticated (19)
+    │   ├── schemas.ts    ← Zod Schema
     │   ├── public.ts     ← Public handlers
     │   ├── authenticated.ts ← Auth handlers
     │   └── index.ts
-    └── indicators/       ← Technical indicators (44)
+    └── indicators/       ← Technical indicators (46)
         ├── schemas.ts    ← Indicator param schemas
-        ├── trend.ts (13) / momentum.ts (14)
-        ├── volatility.ts (8) / utility.ts (9)
+        ├── format.ts     ← Precision formatter
+        ├── trend.ts (12) / momentum.ts (11)
+        ├── volatility.ts (5) / utility.ts (9)
+        ├── signals.ts (4) / risk.ts (5)
         └── index.ts
 ```
 
-**Conditional registration:** API Key present → 73 tools; absent → 56 tools.
+**Conditional registration:** API Key present → 76 tools; absent → 57 tools.
 
 ## Commands
 

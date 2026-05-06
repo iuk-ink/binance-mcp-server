@@ -1,5 +1,5 @@
 /**
- * Binance MCP Server v2.0 — 风险/绩效工具 (5 个)
+ * Binance MCP Server — 风险/绩效工具 (5 个)
  *
  * @module domain/indicators/risk
  * @description

@@ -1,5 +1,5 @@
 /**
- * Binance MCP Server v2.0 — 统一类型定义
+ * Binance MCP Server — 统一类型定义
  *
  * @module types/common
  * @description

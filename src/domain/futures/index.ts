@@ -1,5 +1,5 @@
 /**
- * Binance MCP Server v2.0 — 期货领域模块导出
+ * Binance MCP Server — 期货领域模块导出
  *
  * @module domain/futures
  * @description

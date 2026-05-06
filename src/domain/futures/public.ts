@@ -1,5 +1,5 @@
 /**
- * Binance MCP Server v2.0 — 期货公开 REST 工具
+ * Binance MCP Server — 期货公开 REST 工具
  *
  * @module domain/futures/public
  * @description

@@ -1,5 +1,5 @@
 /**
- * Binance MCP Server v2.0 — 输入校验模块
+ * Binance MCP Server — 输入校验模块
  *
  * @module utils/validation
  * @description

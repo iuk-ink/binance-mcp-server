@@ -1,6 +1,9 @@
 /**
- * Binance MCP Server v2.0 — 通用工具函数 (9 个)
+ * Binance MCP Server — 通用工具函数 (9 个)
+ *
  * @module domain/indicators/utility
+ * @description
+ * 提供与交易相关的通用计算工具，均为纯函数，无外部 API 依赖。
  */
 import { getAverage, getGrid, getMaximum, getMedian, getMinimum, getQuartile, getStandardDeviation, getStreaks, isMonday, isTuesday, isWednesday, isThursday, isFriday, isSaturday, isSunday } from 'trading-signals';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -45,7 +48,8 @@ export const utilityTools: ToolDefinition[] = [
           isFriday: isFriday(timezone, d), isSaturday: isSaturday(timezone, d),
           isSunday: isSunday(timezone, d),
         };
-        // 根据 boolean 推导出星期几字符串，更直观
+        // 从布尔值推导星期几字符串。
+        // 'isWednesday' → replace('is', '') → 'Wednesday'
         const weekday = Object.keys(bools).find((k) => bools[k])?.replace('is', '') ?? null;
         return ok({ function: 'weekday', timezone, date: date || 'today', weekday, ...bools });
       } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }

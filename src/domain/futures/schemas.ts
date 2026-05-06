@@ -1,5 +1,5 @@
 /**
- * Binance MCP Server v2.0 — 期货领域 Zod Schema 定义
+ * Binance MCP Server — 期货领域 Zod Schema 定义
  *
  * @module domain/futures/schemas
  * @description
@@ -8,8 +8,8 @@
  * McpServer.registerTool() 会自动将 Zod Schema 转为 JSON Schema。
  *
  * Schema 分类：
- * - 公开 Schema (8 个): 无需认证的市场数据查询工具
- * - 认证 Schema (14 个): 需 API Key 签名的交易/账户管理工具（Phase 2C-2 补充）
+ * - 公开 Schema (10 个): 无需认证的市场数据查询工具
+ * - 认证 Schema (18 个): 需 API Key 签名的交易/账户管理工具
  */
 
 import { z } from 'zod';

@@ -1,5 +1,5 @@
 /**
- * Binance MCP Server v2.0 — API 限流重试模块
+ * Binance MCP Server — API 限流重试模块
  *
  * @module utils/rate-limiter
  * @description

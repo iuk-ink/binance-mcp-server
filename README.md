@@ -38,7 +38,7 @@ npm run dev   # 或：npm run build && npm start
 | `futures_all_book_tickers` | 最优买卖挂单 |
 | `futures_mark_price` | 标记价格（强平依据） |
 
-### 期货认证（17 个，需要 API Key）
+### 期货认证（19 个，需要 API Key）
 
 | 分类 | 工具 | 功能 |
 |------|------|------|
@@ -57,8 +57,10 @@ npm run dev   # 或：npm run build && npm start
 | | `futures_batch_orders` | 批量下单（≤5） |
 | | `futures_cancel_batch_orders` | 批量取消 |
 | ❌ 取消与活跃 | `futures_cancel_order` | 单笔取消（支持条件单 algoId） |
-| | `futures_cancel_all_open_orders` | 一键清仓 |
+| | `futures_cancel_all_open_orders` | 一键清仓（需确认） |
 | | `futures_open_orders` | 当前活跃订单 |
+| 🛠️ 辅助工具 | `futures_account_report` | 账户全景报告（余额+持仓+订单） |
+| | `futures_quick_order` | 一键止损/止盈（百分比自动算价） |
 
 #### 下单类型速查表
 
@@ -158,13 +160,14 @@ src/
 ├── types/common.ts       ← ToolDefinition 泛型
 ├── utils/                ← 日志 / 校验 / 错误脱敏
 └── domain/
-    ├── futures/          ← 期货：公开(12) + 认证(17)
-    │   ├── schemas.ts    ← Zod Schema（42 个输入定义）
+    ├── futures/          ← 期货：公开(11) + 认证(19)
+    │   ├── schemas.ts    ← Zod Schema
     │   ├── public.ts     ← 公开 handler
     │   ├── authenticated.ts ← 认证 handler
     │   └── index.ts
     └── indicators/       ← 技术指标(46)
         ├── schemas.ts    ← 指标参数 Schema
+        ├── format.ts     ← 精度格式化
         ├── trend.ts (12) / momentum.ts (11)
         ├── volatility.ts (5) / utility.ts (9)
         ├── signals.ts (4) / risk.ts (5)

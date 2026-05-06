@@ -7,7 +7,7 @@
 
 🌐 **Language:** [English](README.en.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [简体中文](../README.md)
 
-Model Context Protocol (MCP) 기반의 **Binance 선물 API 서버** — 73 개의 도구로 시세·주문·기술적 지표 3대 영역을 커버합니다.
+Model Context Protocol (MCP) 기반의 **Binance 선물 API 서버** — 76 개의 도구로 시세·주문·기술적 지표 3대 영역을 커버합니다.
 
 ## 빠른 시작
 
@@ -20,9 +20,9 @@ cp .env.example .env
 npm run dev   # 또는: npm run build && npm start
 ```
 
-## 도구 목록（총 73 개）
+## 도구 목록（총 76 개）
 
-### 선물 공개（12 개, Key 불필요）
+### 선물 공개（11 개, Key 불필요）
 
 | 도구 | 기능 |
 |------|------|
@@ -37,9 +37,8 @@ npm run dev   # 또는: npm run build && npm start
 | `futures_prices` | 전 종목 실시간 가격 |
 | `futures_all_book_tickers` | 전 종목 최우선 매수/매도 호가 |
 | `futures_mark_price` | 마크 가격（청산 기준） |
-| `futures_force_orders` | 강제 청산 주문 이력 |
 
-### 선물 인증（17 개, Key 필요）
+### 선물 인증（19 개, Key 필요）
 
 | 분류 | 도구 | 기능 |
 |------|------|------|
@@ -58,8 +57,10 @@ npm run dev   # 또는: npm run build && npm start
 | | `futures_batch_orders` | 일괄 주문（≤5） |
 | | `futures_cancel_batch_orders` | 일괄 취소 |
 | ❌ 취소 및 활성 | `futures_cancel_order` | 단일 취소（조건부 주문 algoId 지원） |
-| | `futures_cancel_all_open_orders` | 전체 미체결 주문 취소 |
+| | `futures_cancel_all_open_orders` | 전체 미체결 주문 취소（확인 필요） |
 | | `futures_open_orders` | 현재 활성 주문 |
+| 🛠️ 유틸리티 | `futures_account_report` | 계좌 전체 리포트（잔고+포지션+주문） |
+| | `futures_quick_order` | 원클릭 손절/익절（% 오프셋 자동 계산） |
 
 #### 주문 유형 요약
 
@@ -82,14 +83,16 @@ npm run dev   # 또는: npm run build && npm start
 | 트레일링 스탑 청산 | `type=TRAILING_STOP_MARKET, closePosition=true, activationPrice=활성화가격, callbackRate="1"` |
 | 조건부 주문 취소 | `futures_cancel_order(symbol, algoId=xxx)` |
 
-### 기술적 지표（44 개, Key 불필요）
+### 기술적 지표（46 개, Key 불필요）
 
 | 분류 | 개수 | 도구 목록 |
 |------|:--:|------|
-| **추세** | 13 | `indicator_sma`, `indicator_ema`, `indicator_dema`, `indicator_rma`, `indicator_wma`, `indicator_wsma`, `indicator_sma15`, `indicator_dma`, `indicator_dx`, `indicator_adx`, `indicator_linreg`, `indicator_psar`, `indicator_vwap` |
-| **모멘텀** | 14 | `indicator_ao`, `indicator_ac`, `indicator_mom`, `indicator_cci`, `indicator_cg`, `indicator_macd`, `indicator_obv`, `indicator_rei`, `indicator_roc`, `indicator_rsi`, `indicator_stoch`, `indicator_stoch_rsi`, `indicator_tds`, `indicator_williams_r` |
-| **변동성** | 8 | `indicator_abands`, `indicator_atr`, `indicator_bbands`, `indicator_bbw`, `indicator_iqr`, `indicator_mad`, `indicator_tr`, `indicator_zigzag` |
+| **추세** | 12 | `indicator_sma`, `indicator_ema`, `indicator_dema`, `indicator_rma`, `indicator_wma`, `indicator_wsma`, `indicator_dma`, `indicator_dx`, `indicator_adx`, `indicator_linreg`, `indicator_psar`, `indicator_vwap` |
+| **모멘텀** | 11 | `indicator_ao`, `indicator_mom`, `indicator_cci`, `indicator_macd`, `indicator_obv`, `indicator_roc`, `indicator_rsi`, `indicator_stoch`, `indicator_stoch_rsi`, `indicator_tds`, `indicator_williams_r` |
+| **변동성** | 5 | `indicator_abands`, `indicator_atr`, `indicator_bbands`, `indicator_iqr`, `indicator_zigzag` |
 | **유틸리티** | 9 | `util_average`, `util_grid`, `util_max`, `util_min`, `util_median`, `util_quartile`, `util_stddev`, `util_streaks`, `util_weekday` |
+| **시그널** | 4 | `signal_ema_cross`, `signal_macd_rsi`, `signal_bb_rsi`, `signal_ma_cross` |
+| **리스크** | 5 | `util_sharpe`, `util_max_drawdown`, `util_calmar`, `util_win_rate`, `util_var` |
 
 ## 환경 설정
 
@@ -155,21 +158,23 @@ src/
 ├── server.ts             ← McpServer 생성 + 조건부 등록
 ├── config/binance.ts     ← 설정（엔드포인트 / 프록시 / 인증）
 ├── types/common.ts       ← ToolDefinition 제네릭
-├── utils/                ← 로거 / 검증 / 오류 무결화
+├── utils/                ← 로거 / 검증 / 오류 무결화 / 속도 제한
 └── domain/
-    ├── futures/          ← 선물: 공개 (12) + 인증 (17)
-    │   ├── schemas.ts    ← Zod 스키마（42개 입력 정의）
+    ├── futures/          ← 선물: 공개 (11) + 인증 (19)
+    │   ├── schemas.ts    ← Zod 스키마
     │   ├── public.ts     ← 공개 핸들러
     │   ├── authenticated.ts ← 인증 핸들러
     │   └── index.ts
-    └── indicators/       ← 기술적 지표 (44)
+    └── indicators/       ← 기술적 지표 (46)
         ├── schemas.ts    ← 지표 파라미터 스키마
-        ├── trend.ts (13) / momentum.ts (14)
-        ├── volatility.ts (8) / utility.ts (9)
+        ├── format.ts     ← 정밀도 포맷터
+        ├── trend.ts (12) / momentum.ts (11)
+        ├── volatility.ts (5) / utility.ts (9)
+        ├── signals.ts (4) / risk.ts (5)
         └── index.ts
 ```
 
-**조건부 등록:** API Key 있음 → 73 도구；없음 → 56 도구。
+**조건부 등록:** API Key 있음 → 76 도구；없음 → 57 도구。
 
 ## 명령어
 

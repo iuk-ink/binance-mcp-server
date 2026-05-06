@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Binance MCP Server v2.0 — 冒烟测试
+ * Binance MCP Server — 冒烟测试
  *
  * 验证：
  * 1. 配置加载正常
@@ -30,7 +30,7 @@ function assert(condition: boolean, message: string): void {
 }
 
 async function main(): Promise<void> {
-  console.error('\n========== Binance MCP Server v2.0 冒烟测试 ==========\n');
+  console.error('\n========== Binance MCP Server 冒烟测试 ==========\n');
 
   // ----- 测试 1: 指标工具独立创建 -----
   console.error('--- 测试 1: 指标工具创建 ---');
@@ -114,8 +114,7 @@ async function main(): Promise<void> {
       ((smaResult as { content: { text: string }[] }).content[0]).text,
     );
     assert(smaData.indicator === 'SMA', 'SMA 返回正确的 indicator 名');
-    assert(Array.isArray(smaData.values), 'SMA 返回 values 数组');
-    assert(smaData.values.length > 0, 'SMA 返回非空结果');
+    assert(smaData.last !== null, 'SMA 返回 last 值');
 
     // 测试 RSI
     const rsiResult = await findIndicator('indicator_rsi').handler({

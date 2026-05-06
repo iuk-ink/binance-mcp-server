@@ -1,5 +1,5 @@
 /**
- * Binance MCP Server v2.0 — 技术指标领域模块导出
+ * Binance MCP Server — 技术指标领域模块导出
  *
  * @module domain/indicators
  * @description
