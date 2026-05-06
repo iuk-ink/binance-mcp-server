@@ -1,20 +1,169 @@
+/**
+ * Binance MCP Server v2.0 — TypeScript 编译器配置
+ *
+ * @module tsconfig
+ * @description
+ * tsconfig.json 是 TypeScript 编译器的配置文件，控制 tsc 如何将 .ts 源码编译为 .js。
+ *
+ * 编译目标：将 src/ 下的 ESM TypeScript 编译为 dist/ 下的 ES2022 JavaScript。
+ *
+ * 关联文件：
+ * - package.json "build": "tsc"              —— 编译
+ * - package.json "typecheck": "tsc --noEmit" —— 仅检查类型，不输出文件
+ * - eslint.config.js                         —— ESLint 通过 project 关联此文件做类型感知检查
+ */
+
 {
+  /* ===========================================================================
+   * 编译选项（Compiler Options）
+   * 控制编译输出的行为、目标环境和模块系统
+   * =========================================================================== */
   "compilerOptions": {
+
+    /* ---------- 目标环境 ---------- */
+
+    /* 编译目标 JavaScript 版本 — ES2022
+     *
+     * ES2022 对应 Node.js 18+ 的原生支持范围，包含以下特性：
+     * - Top-level await（顶层 await）
+     * - Class fields（类字段声明）
+     * - Private class fields（私有字段 #）
+     * - Array.prototype.at() 等
+     *
+     * 与 package.json 的 engines.node >=18 保持一致。 */
     "target": "ES2022",
+
+    /* 模块系统 — ES2022（ESM 原生模块）
+     *
+     * 与 package.json 的 "type": "module" 对应。
+     * 编译后输出 import/export 语句，运行时由 Node.js 直接解析。
+     * MCP 服务器以 ESM 方式启动，无需额外打包工具。 */
     "module": "ES2022",
+
+    /* 标准库声明文件 — ES2022
+     *
+     * 告诉 TypeScript 编译器可用的全局类型定义。
+     * 设为 ["ES2022"] 表示不包含 DOM 类型（如 window、document），
+     * 因为本应用是纯 Node.js 服务端，无需浏览器 API。 */
     "lib": ["ES2022"],
+
+    /* ---------- 输出目录 ---------- */
+
+    /* 编译输出目录 — ./dist
+     *
+     * 所有编译后的 .js / .d.ts / .js.map 文件输出到此目录。
+     * package.json 的 "main" 字段指向 dist/index.js。
+     * .gitignore 中已排除 dist/。 */
     "outDir": "./dist",
+
+    /* 源码根目录 — ./src
+     *
+     * 指定编译源文件的根目录。编译后的 dist/ 中会保留
+     * src/ 内部的目录结构。例如：
+     * - src/server.ts         → dist/server.js
+     * - src/config/binance.ts → dist/config/binance.js */
     "rootDir": "./src",
+
+    /* ---------- 严格检查 ---------- */
+
+    /* 严格模式 — true（启用所有严格检查选项）
+     *
+     * 等价于同时启用以下八个子选项：
+     * - strictNullChecks             —— null/undefined 不可赋值给其他类型
+     * - strictFunctionTypes          —— 函数参数类型双向协变检查
+     * - strictBindCallApply          —— bind/call/apply 参数严格检查
+     * - strictPropertyInitialization —— 类属性必须初始化
+     * - noImplicitAny                —— 禁止隐式 any
+     * - noImplicitThis               —— 禁止隐式 this: any
+     * - alwaysStrict                 —— 输出 "use strict"
+     * - useUnknownInCatchVariables   —— catch 变量默认为 unknown
+     *
+     * TypeScript 推荐的最严格检查级别，能尽早发现潜在 bug。 */
     "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "declaration": true,
-    "sourceMap": true,
+
+    /* ---------- 模块解析 ---------- */
+
+    /* 模块解析策略 — bundler
+     *
+     * "bundler" 模式适用于现代打包工具或不打包直接运行的场景。
+     * 相比 "node" 模式：
+     * - 允许不写文件扩展名导入（import './foo' 而非 './foo.js'）
+     * - 支持 package.json 的 "exports" 字段
+     * - 更好的 ESM/CJS 互操作 */
     "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true
+
+    /* ES 模块互操作 — true
+     *
+     * 允许 ESM 项目使用 import 语法导入 CJS 模块。
+     * 例如本项目通过 createRequire 加载 binance-api-node（CJS），
+     * 编译时不会报类型错误。 */
+    "esModuleInterop": true,
+
+    /* 允许合成默认导入 — true
+     *
+     * 当模块没有默认导出时，允许 import defaultMember from "module"
+     * 这种写法。配合 esModuleInterop 使用，提升跨模块系统兼容性。 */
+    "allowSyntheticDefaultImports": true,
+
+    /* ---------- 输出格式 ---------- */
+
+    /* 生成类型声明文件 — true
+     *
+     * 编译时同步生成 .d.ts 文件，供外部项目或 IDE 获取类型信息。
+     * npm 发布后，其他项目可以引用本包的类型定义。 */
+    "declaration": true,
+
+    /* 生成 Source Map — true
+     *
+     * 输出 .js.map 文件，建立编译后代码与源码的映射关系。
+     * 调试时可以直接定位到原始 .ts 源码行，而非编译后的 .js。 */
+    "sourceMap": true,
+
+    /* ---------- 其他 ---------- */
+
+    /* 跳过库文件类型检查 — true
+     *
+     * 不检查 node_modules 中 .d.ts 文件的类型错误。
+     * 大幅提升编译速度，同时避免第三方库的类型不一致问题。
+     * 不影响项目源码的类型检查。 */
+    "skipLibCheck": true,
+
+    /* 强制文件名大小写一致 — true
+     *
+     * 例如 import './Server' 引入的文件实际名为 server.ts 时
+     * 会报错。防止 Windows（不区分大小写）和 Linux（区分大小写）
+     * 之间出现行为差异。 */
+    "forceConsistentCasingInFileNames": true,
+
+    /* 解析 JSON 模块 — true
+     *
+     * 允许 import data from './config.json' 这种写法，
+     * TypeScript 自动推导 JSON 内容的类型。 */
+    "resolveJsonModule": true,
   },
+
+  /* ===========================================================================
+   * 包含（Include）
+   * 指定需要编译的源文件范围
+   * =========================================================================== */
+
+  /* 编译包含范围 — src 目录下所有文件
+   *
+   * 只有 src/ 下的文件会被 tsc 编译。
+   * test/ 目录不在编译范围（不作为发布产物），因此：
+   * - 运行 npx tsx test/smoke-test.ts 可以手动执行测试
+   * - 但 tsc --noEmit 不会检查 test/ 目录的类型
+   * - ESLint 单独为 test/ 配置了规则（不做 project 类型检查） */
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+
+  /* ===========================================================================
+   * 排除（Exclude）
+   * 明确排除的目录，即使它们在 include 范围内
+   * =========================================================================== */
+
+  /* 排除目录 — node_modules 和 dist
+   *
+   * - node_modules：第三方依赖，由 skipLibCheck 跳过但不编译
+   * - dist：编译输出目录，避免递归编译产物 */
+  "exclude": ["node_modules", "dist"],
 }
