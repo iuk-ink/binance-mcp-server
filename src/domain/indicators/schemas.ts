@@ -68,3 +68,37 @@ export const QuartileInput = z.object({ values: PriceArr, q: z.union([z.literal(
 export const StdDevInput = z.object({ values: PriceArr, average: z.number().optional().describe('预计算均值') });
 export const StreaksInput = z.object({ prices: PriceArr, keepSide: z.enum(['up', 'down']).describe('方向') });
 export const WeekdayInput = z.object({ timezone: z.string().default('UTC').describe('时区'), date: z.string().optional().describe('ISO日期') });
+
+// ==================== 组合信号 (4) ====================
+export const SignalEmaCrossInput = z.object({
+  values: PriceArr,
+  fast: z.number().default(12).describe('快线周期'),
+  slow: z.number().default(26).describe('慢线周期'),
+});
+export const SignalMacdRsiInput = z.object({
+  values: PriceArr,
+  fast: z.number().default(12).describe('MACD 快线'),
+  slow: z.number().default(26).describe('MACD 慢线'),
+  signal: z.number().default(9).describe('MACD 信号线'),
+  rsiInterval: z.number().default(14).describe('RSI 周期'),
+});
+export const SignalBbRsiInput = z.object({
+  values: PriceArr,
+  interval: z.number().default(20).describe('布林带周期'),
+  deviationMultiplier: z.number().default(2).describe('标准差倍数'),
+  rsiInterval: z.number().default(14).describe('RSI 周期'),
+});
+export const SignalMACrossInput = z.object({
+  values: PriceArr,
+  short: z.number().default(5).describe('短期均线周期'),
+  long: z.number().default(20).describe('长期均线周期'),
+});
+
+// ==================== 风险/绩效 (5) ====================
+const ReturnArr = z.array(z.number()).min(2).describe('收益率数组（如日收益率序列）');
+const PriceSeries = z.array(z.number()).min(2).describe('净值/价格序列');
+export const SharpeInput = z.object({ returns: ReturnArr, riskFreeRate: z.number().default(0).describe('无风险利率（如 0.02 表示 2%）') });
+export const MaxDrawdownInput = z.object({ equity: PriceSeries });
+export const CalmarInput = z.object({ returns: ReturnArr, equity: PriceSeries, riskFreeRate: z.number().default(0).describe('无风险利率') });
+export const WinRateInput = z.object({ trades: z.array(z.object({ result: z.enum(['WIN', 'LOSS']), pnl: z.number() })).min(1).describe('交易记录：{result:"WIN"|"LOSS", pnl:盈亏金额}') });
+export const VaRInput = z.object({ returns: ReturnArr, confidence: z.number().default(0.95).describe('置信度（0.95 表示 95%）') });

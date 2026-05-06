@@ -12,6 +12,7 @@
  * - 杠杆分层 (1): leverage_bracket
  * - 下单与改单 (6): order, update_order, get_order, all_orders, batch_orders, cancel_batch_orders
  * - 取消与活跃订单 (3): cancel_order, cancel_all_open_orders, open_orders
+ * - 辅助工具 (3): account_report, quick_stop_loss, quick_take_profit
  */
 
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -35,6 +36,9 @@ import {
   FuturesCancelOrderSchema,
   FuturesCancelAllOpenOrdersSchema,
   FuturesOpenOrdersSchema,
+  FuturesAccountReportSchema,
+  FuturesQuickStopLossSchema,
+  FuturesQuickTakeProfitSchema,
 } from './schemas.js';
 import type { ToolDefinition } from '../../types/common.js';
 
@@ -372,6 +376,84 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           const [orders, algoOrders] = await Promise.all([ordersPromise, algoPromise]);
           const total = (orders?.length ?? 0) + (algoOrders?.length ?? 0);
           return ok({ orders, algoOrders, count: total, timestamp: Date.now() });
+        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+      },
+    },
+
+    // ==================== 辅助工具 ====================
+
+    /** 账户全景报告 — 聚合余额、持仓、活跃订单、账户信息 */
+    {
+      name: 'futures_account_report',
+      description: '获取期货账户全景报告（余额+持仓+活跃订单+账户模式）',
+      schema: FuturesAccountReportSchema,
+      handler: async () => {
+        try {
+          const [balances, positions, openOrders, accountInfo] = await Promise.all([
+            c.futuresAccountBalance() as Promise<unknown>,
+            (c as Record<string, (...args: unknown[]) => unknown>).futuresPositionRisk?.() as Promise<unknown> ?? Promise.resolve(null),
+            c.futuresOpenOrders() as Promise<unknown>,
+            (c as Record<string, (...args: unknown[]) => unknown>).futuresAccountInfo?.() as Promise<unknown> ?? Promise.resolve(null),
+          ]);
+          return ok({ balances, positions, openOrders, accountInfo, timestamp: Date.now() });
+        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+      },
+    },
+
+    /** 一键止损 — 根据百分比偏移自动计算止损价并下 STOP_MARKET 条件单 */
+    {
+      name: 'futures_quick_stop_loss',
+      description: '一键设置止损单。传入当前价格和偏移百分比，自动计算触发价并以 STOP_MARKET 下单',
+      schema: FuturesQuickStopLossSchema,
+      handler: async (args) => {
+        const a = args as Record<string, unknown>;
+        try {
+          validateSymbol(a.symbol as string);
+          const cp = parseFloat(a.currentPrice as string);
+          const pct = parseFloat(a.stopPercent as string);
+          const isLong = a.positionSide === 'LONG' || a.side === 'SELL';
+          // 做多(Long)止损 = 当前价 × (1 - 百分比)；做空(Short)止损 = 当前价 × (1 + 百分比)
+          const stopPrice = (isLong ? cp * (1 - pct / 100) : cp * (1 + pct / 100)).toFixed(2);
+          const params: Record<string, unknown> = {
+            symbol: a.symbol,
+            side: a.side,
+            type: 'STOP_MARKET',
+            stopPrice,
+            closePosition: a.quantity === undefined || a.quantity === '' ? true : undefined,
+            quantity: a.quantity || undefined,
+          };
+          if (a.positionSide) params.positionSide = a.positionSide;
+          const r = await c.futuresOrder(params);
+          return ok({ type: 'stop_loss', stopPrice, order: r, timestamp: Date.now() });
+        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+      },
+    },
+
+    /** 一键止盈 — 根据百分比偏移自动计算止盈价并下 TAKE_PROFIT_MARKET 条件单 */
+    {
+      name: 'futures_quick_take_profit',
+      description: '一键设置止盈单。传入当前价格和偏移百分比，自动计算触发价并以 TAKE_PROFIT_MARKET 下单',
+      schema: FuturesQuickTakeProfitSchema,
+      handler: async (args) => {
+        const a = args as Record<string, unknown>;
+        try {
+          validateSymbol(a.symbol as string);
+          const cp = parseFloat(a.currentPrice as string);
+          const pct = parseFloat(a.takeProfitPercent as string);
+          const isLong = a.positionSide === 'LONG' || a.side === 'SELL';
+          // 做多(Long)止盈 = 当前价 × (1 + 百分比)；做空(Short)止盈 = 当前价 × (1 - 百分比)
+          const tpPrice = (isLong ? cp * (1 + pct / 100) : cp * (1 - pct / 100)).toFixed(2);
+          const params: Record<string, unknown> = {
+            symbol: a.symbol,
+            side: a.side,
+            type: 'TAKE_PROFIT_MARKET',
+            stopPrice: tpPrice,
+            closePosition: a.quantity === undefined || a.quantity === '' ? true : undefined,
+            quantity: a.quantity || undefined,
+          };
+          if (a.positionSide) params.positionSide = a.positionSide;
+          const r = await c.futuresOrder(params);
+          return ok({ type: 'take_profit', takeProfitPrice: tpPrice, order: r, timestamp: Date.now() });
         } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
       },
     },
