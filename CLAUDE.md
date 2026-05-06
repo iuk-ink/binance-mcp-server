@@ -27,6 +27,6 @@ npm run dev
 ## Tool Stats
 
 - Public futures tools: 11
-- Authenticated futures tools: 20
-- Technical indicators: 53 (trend=13, momentum=14, volatility=8, utility=9, signals=4, risk=5)
-- Total: 84 with API Key / 64 without
+- Authenticated futures tools: 19
+- Technical indicators: 46 (trend=12, momentum=11, volatility=5, utility=9, signals=4, risk=5)
+- Total: 76 with API Key / 57 without

@@ -1,13 +1,13 @@
 /**
- * Binance MCP Server v2.0 — 趋势类技术指标工具 (13 个)
+ * Binance MCP Server v2.0 — 趋势类技术指标工具 (12 个)
  * @module domain/indicators/trend
  */
-import { SMA, EMA, DEMA, RMA, WMA, WSMA, SMA15, DMA, ADX, DX, PSAR, LinearRegression, VWAP } from 'trading-signals';
+import { SMA, EMA, DEMA, RMA, WMA, WSMA, DMA, ADX, DX, PSAR, LinearRegression, VWAP } from 'trading-signals';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { logError } from '../../utils/error-handling.js';
 import type { ToolDefinition } from '../../types/common.js';
 import { roundValue } from './format.js';
-import { SMAInput, EMAInput, DEMAInput, RMAInput, WMAInput, WSMAInput, SMA15Input, DMAInput, DXInput, ADXInput, PSARInput, LinRegInput, VWAPInput } from './schemas.js';
+import { SMAInput, EMAInput, DEMAInput, RMAInput, WMAInput, WSMAInput, DMAInput, DXInput, ADXInput, PSARInput, LinRegInput, VWAPInput } from './schemas.js';
 
 const ctors: Record<string, new (n: number) => { add(v: number): number | null; getResultOrThrow(): unknown }> = { EMA, RMA, SMA, WMA, WSMA };
 
@@ -26,7 +26,7 @@ export const trendTools: ToolDefinition[] = [
   { name: 'indicator_rma', description: '相对移动平均线 (RMA)', schema: RMAInput, handler: async (a: unknown) => { const { values, interval } = a as { values: number[]; interval: number }; try { const i = new RMA(interval); for (const v of values) i.add(v); return ok({ indicator: 'RMA', interval, last: i.getResultOrThrow() }); } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); } } },
   { name: 'indicator_wma', description: '加权移动平均线 (WMA)', schema: WMAInput, handler: async (a: unknown) => { const { values, interval } = a as { values: number[]; interval: number }; try { const i = new WMA(interval); for (const v of values) i.add(v); return ok({ indicator: 'WMA', interval, last: i.getResult() }); } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); } } },
   { name: 'indicator_wsma', description: "Wilder's 平滑移动平均线 (WSMA)", schema: WSMAInput, handler: async (a: unknown) => { const { values, interval } = a as { values: number[]; interval: number }; try { const i = new WSMA(interval); for (const v of values) i.add(v); return ok({ indicator: 'WSMA', interval, last: i.getResult() }); } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); } } },
-  { name: 'indicator_sma15', description: "Spencer's 15点移动平均线 (SMA15)", schema: SMA15Input, handler: async (a: unknown) => { const { values } = a as { values: number[] }; try { const i = new (SMA15 as any)(15); for (const v of values) i.add(v); return ok({ indicator: 'SMA15', last: i.getResultOrThrow() }); } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); } } },
+
   {
     name: 'indicator_dma', description: '双均线 (DMA)', schema: DMAInput,
     handler: async (a: unknown) => {

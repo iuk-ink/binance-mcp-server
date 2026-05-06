@@ -35,7 +35,7 @@ async function main(): Promise<void> {
   // ----- 测试 1: 指标工具独立创建 -----
   console.error('--- 测试 1: 指标工具创建 ---');
   const indicatorTools = createIndicatorTools();
-  assert(indicatorTools.length === 53, `指标工具数 = ${indicatorTools.length}（期望 53）`);
+  assert(indicatorTools.length === 46, `指标工具数 = ${indicatorTools.length}（期望 46）`);
   const indicatorNames = indicatorTools.map(t => t.name);
   assert(indicatorNames.includes('indicator_sma'), '包含 indicator_sma');
   assert(indicatorNames.includes('indicator_rsi'), '包含 indicator_rsi');
@@ -89,7 +89,7 @@ async function main(): Promise<void> {
     futuresOpenOrders: async () => [],
   };
   const authTools = createFuturesAuthenticatedTools(authClient);
-  assert(authTools.length === 20, `认证工具数 = ${authTools.length}（期望 20）`);
+  assert(authTools.length === 19, `认证工具数 = ${authTools.length}（期望 19）`);
   assert(authTools[0].name === 'futures_account_balance', '包含 futures_account_balance');
   assert(authTools.some((t: any) => t.name === 'futures_cancel_order'), '包含 futures_cancel_order');
   assert(authTools.some((t: any) => t.name === 'futures_open_orders'), '包含 futures_open_orders');

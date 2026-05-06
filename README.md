@@ -20,7 +20,7 @@ cp .env.example .env
 npm run dev   # 或：npm run build && npm start
 ```
 
-## 工具全景（84 个）
+## 工具全景（76 个）
 
 ### 期货公开（11 个，无需 Key）
 
@@ -81,13 +81,13 @@ npm run dev   # 或：npm run build && npm start
 | 追踪止损平仓 | `type=TRAILING_STOP_MARKET, closePosition=true, activationPrice=激活价, callbackRate="1"` |
 | 取消条件单 | `futures_cancel_order(symbol, algoId=xxx)` |
 
-### 技术指标（53 个，无需 Key）
+### 技术指标（46 个，无需 Key）
 
 | 分类 | 数量 | 工具列表 |
 |------|:--:|------|
-| **趋势** | 13 | `indicator_sma`, `indicator_ema`, `indicator_dema`, `indicator_rma`, `indicator_wma`, `indicator_wsma`, `indicator_sma15`, `indicator_dma`, `indicator_dx`, `indicator_adx`, `indicator_linreg`, `indicator_psar`, `indicator_vwap` |
-| **动量** | 14 | `indicator_ao`, `indicator_ac`, `indicator_mom`, `indicator_cci`, `indicator_cg`, `indicator_macd`, `indicator_obv`, `indicator_rei`, `indicator_roc`, `indicator_rsi`, `indicator_stoch`, `indicator_stoch_rsi`, `indicator_tds`, `indicator_williams_r` |
-| **波动率** | 8 | `indicator_abands`, `indicator_atr`, `indicator_bbands`, `indicator_bbw`, `indicator_iqr`, `indicator_mad`, `indicator_tr`, `indicator_zigzag` |
+| **趋势** | 12 | `indicator_sma`, `indicator_ema`, `indicator_dema`, `indicator_rma`, `indicator_wma`, `indicator_wsma`, `indicator_dma`, `indicator_dx`, `indicator_adx`, `indicator_linreg`, `indicator_psar`, `indicator_vwap` |
+| **动量** | 11 | `indicator_ao`, `indicator_mom`, `indicator_cci`, `indicator_macd`, `indicator_obv`, `indicator_roc`, `indicator_rsi`, `indicator_stoch`, `indicator_stoch_rsi`, `indicator_tds`, `indicator_williams_r` |
+| **波动率** | 5 | `indicator_abands`, `indicator_atr`, `indicator_bbands`, `indicator_iqr`, `indicator_zigzag` |
 | **工具函数** | 9 | `util_average`, `util_grid`, `util_max`, `util_min`, `util_median`, `util_quartile`, `util_stddev`, `util_streaks`, `util_weekday` |
 | **组合信号** | 4 | `signal_ema_cross`, `signal_macd_rsi`, `signal_bb_rsi`, `signal_ma_cross` |
 | **风险/绩效** | 5 | `util_sharpe`, `util_max_drawdown`, `util_calmar`, `util_win_rate`, `util_var` |
@@ -163,15 +163,15 @@ src/
     │   ├── public.ts     ← 公开 handler
     │   ├── authenticated.ts ← 认证 handler
     │   └── index.ts
-    └── indicators/       ← 技术指标(53)
+    └── indicators/       ← 技术指标(46)
         ├── schemas.ts    ← 指标参数 Schema
-        ├── trend.ts (13) / momentum.ts (14)
-        ├── volatility.ts (8) / utility.ts (9)
+        ├── trend.ts (12) / momentum.ts (11)
+        ├── volatility.ts (5) / utility.ts (9)
         ├── signals.ts (4) / risk.ts (5)
         └── index.ts
 ```
 
-**条件注册：** API Key 存在 → 84 工具；不存在 → 64 工具。
+**条件注册：** API Key 存在 → 76 工具；不存在 → 57 工具。
 
 ## 命令
 

@@ -293,22 +293,13 @@ export const FuturesOpenOrdersSchema = z.object({
 /** 账户持仓全景报告 — 无参，自动聚合所有账户信息 */
 export const FuturesAccountReportSchema = z.object({});
 
-/** 一键止损 — 根据当前价格和百分比偏移计算止损价并下单 */
-export const FuturesQuickStopLossSchema = z.object({
+/** 一键止损/止盈 — 根据当前价格和百分比偏移自动计算触发价并下条件单 */
+export const FuturesQuickOrderSchema = z.object({
   symbol: z.string().describe('交易对符号'),
   side: z.enum(['BUY', 'SELL']).describe('持仓方向对应的平仓方向'),
   positionSide: z.enum(['LONG', 'SHORT']).optional().describe('持仓方向，双向持仓模式必填'),
+  orderType: z.enum(['STOP_LOSS', 'TAKE_PROFIT']).describe('订单类型：STOP_LOSS=止损, TAKE_PROFIT=止盈'),
   currentPrice: z.string().describe('当前参考价格'),
-  stopPercent: z.string().describe('止损偏移百分比，如"5"表示 5%，做多时低于现价下单，做空时高于现价下单'),
-  quantity: z.string().optional().describe('平仓数量，不传则传 closePosition=true 全平'),
-});
-
-/** 一键止盈 — 根据当前价格和百分比偏移计算止盈价并下单 */
-export const FuturesQuickTakeProfitSchema = z.object({
-  symbol: z.string().describe('交易对符号'),
-  side: z.enum(['BUY', 'SELL']).describe('持仓方向对应的平仓方向'),
-  positionSide: z.enum(['LONG', 'SHORT']).optional().describe('持仓方向，双向持仓模式必填'),
-  currentPrice: z.string().describe('当前参考价格'),
-  takeProfitPercent: z.string().describe('止盈偏移百分比，如"10"表示 10%，做多时高于现价下单，做空时低于现价下单'),
+  offsetPercent: z.string().describe('偏移百分比，如"5"表示 5%。止损=低于现价，止盈=高于现价'),
   quantity: z.string().optional().describe('平仓数量，不传则传 closePosition=true 全平'),
 });

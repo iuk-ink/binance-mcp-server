@@ -3,7 +3,7 @@
  *
  * @module domain/futures/authenticated
  * @description
- * 提供需要 API Key 认证的期货交易和账户管理 MCP 工具，共 17 个。
+ * 提供需要 API Key 认证的期货交易和账户管理 MCP 工具，共 19 个。
  * 这些工具仅在检测到 BINANCE_API_KEY + BINANCE_API_SECRET 时注册。
  *
  * 工具分类：
@@ -12,7 +12,7 @@
  * - 杠杆分层 (1): leverage_bracket
  * - 下单与改单 (6): order, update_order, get_order, all_orders, batch_orders, cancel_batch_orders
  * - 取消与活跃订单 (3): cancel_order, cancel_all_open_orders, open_orders
- * - 辅助工具 (3): account_report, quick_stop_loss, quick_take_profit
+ * - 辅助工具 (2): account_report, quick_order
  */
 
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -37,8 +37,7 @@ import {
   FuturesCancelAllOpenOrdersSchema,
   FuturesOpenOrdersSchema,
   FuturesAccountReportSchema,
-  FuturesQuickStopLossSchema,
-  FuturesQuickTakeProfitSchema,
+  FuturesQuickOrderSchema,
 } from './schemas.js';
 import type { ToolDefinition } from '../../types/common.js';
 
@@ -400,60 +399,36 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
       },
     },
 
-    /** 一键止损 — 根据百分比偏移自动计算止损价并下 STOP_MARKET 条件单 */
+    /** 一键止损/止盈 — 根据百分比偏移自动计算触发价并下条件单 */
     {
-      name: 'futures_quick_stop_loss',
-      description: '一键设置止损单。传入当前价格和偏移百分比，自动计算触发价并以 STOP_MARKET 下单',
-      schema: FuturesQuickStopLossSchema,
+      name: 'futures_quick_order',
+      description: '一键设置止损或止盈单。传入当前价格和偏移百分比，自动计算触发价并下条件单',
+      schema: FuturesQuickOrderSchema,
       handler: async (args) => {
         const a = args as Record<string, unknown>;
         try {
           validateSymbol(a.symbol as string);
           const cp = parseFloat(a.currentPrice as string);
-          const pct = parseFloat(a.stopPercent as string);
+          const pct = parseFloat(a.offsetPercent as string);
           const isLong = a.positionSide === 'LONG' || a.side === 'SELL';
-          // 做多(Long)止损 = 当前价 × (1 - 百分比)；做空(Short)止损 = 当前价 × (1 + 百分比)
-          const stopPrice = (isLong ? cp * (1 - pct / 100) : cp * (1 + pct / 100)).toFixed(2);
+          const isStopLoss = a.orderType === 'STOP_LOSS';
+          // STOP_LOSS: 做多低于现价, 做空高于现价 | TAKE_PROFIT: 做多高于现价, 做空低于现价
+          const triggerPrice = (() => {
+            if (isStopLoss) return (isLong ? cp * (1 - pct / 100) : cp * (1 + pct / 100)).toFixed(2);
+            return (isLong ? cp * (1 + pct / 100) : cp * (1 - pct / 100)).toFixed(2);
+          })();
+          const orderType = isStopLoss ? 'STOP_MARKET' : 'TAKE_PROFIT_MARKET';
           const params: Record<string, unknown> = {
             symbol: a.symbol,
             side: a.side,
-            type: 'STOP_MARKET',
-            stopPrice,
+            type: orderType,
+            stopPrice: triggerPrice,
             closePosition: a.quantity === undefined || a.quantity === '' ? true : undefined,
             quantity: a.quantity || undefined,
           };
           if (a.positionSide) params.positionSide = a.positionSide;
           const r = await c.futuresOrder(params);
-          return ok({ type: 'stop_loss', stopPrice, order: r, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
-      },
-    },
-
-    /** 一键止盈 — 根据百分比偏移自动计算止盈价并下 TAKE_PROFIT_MARKET 条件单 */
-    {
-      name: 'futures_quick_take_profit',
-      description: '一键设置止盈单。传入当前价格和偏移百分比，自动计算触发价并以 TAKE_PROFIT_MARKET 下单',
-      schema: FuturesQuickTakeProfitSchema,
-      handler: async (args) => {
-        const a = args as Record<string, unknown>;
-        try {
-          validateSymbol(a.symbol as string);
-          const cp = parseFloat(a.currentPrice as string);
-          const pct = parseFloat(a.takeProfitPercent as string);
-          const isLong = a.positionSide === 'LONG' || a.side === 'SELL';
-          // 做多(Long)止盈 = 当前价 × (1 + 百分比)；做空(Short)止盈 = 当前价 × (1 - 百分比)
-          const tpPrice = (isLong ? cp * (1 + pct / 100) : cp * (1 - pct / 100)).toFixed(2);
-          const params: Record<string, unknown> = {
-            symbol: a.symbol,
-            side: a.side,
-            type: 'TAKE_PROFIT_MARKET',
-            stopPrice: tpPrice,
-            closePosition: a.quantity === undefined || a.quantity === '' ? true : undefined,
-            quantity: a.quantity || undefined,
-          };
-          if (a.positionSide) params.positionSide = a.positionSide;
-          const r = await c.futuresOrder(params);
-          return ok({ type: 'take_profit', takeProfitPrice: tpPrice, order: r, timestamp: Date.now() });
+          return ok({ type: a.orderType, orderType, triggerPrice, order: r, timestamp: Date.now() });
         } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
       },
     },
