@@ -1,5 +1,5 @@
 /**
- * Binance MCP Server v2.0 — ESLint Flat Config
+ * Binance MCP Server — ESLint Flat Config
  *
  * @module eslint.config
  * @description
