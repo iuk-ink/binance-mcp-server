@@ -13,10 +13,10 @@
  * 4. 返回标准 MCP 响应格式
  */
 
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { validateSymbol } from '../../utils/validation.js';
 import { logError } from '../../utils/error-handling.js';
 import { withRetry } from '../../utils/rate-limiter.js';
+import { ok } from '../../utils/response.js';
 import {
   FuturesSymbolSchema,
   FuturesKlinesSchema,
@@ -29,14 +29,10 @@ import {
   FuturesPricesSchema,
   FuturesAllBookTickersSchema,
 } from './schemas.js';
-import type { ToolDefinition } from '../../types/common.js';
-
-function ok(data: unknown): CallToolResult {
-  return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
-}
+import type { ToolDefinition, BinanceClient } from '../../types/common.js';
 
 export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
-  const c = client as Record<string, (...args: unknown[]) => unknown>;
+  const c = client as BinanceClient;
 
   return [
     // ---- 连通性 ----
@@ -46,7 +42,7 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
       schema: FuturesSymbolSchema,
       handler: async () => {
         try { const r = await c.futuresPing(); return ok({ ping: 'ok', data: r, timestamp: Date.now() }); }
-        catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        catch (e) { logError(e as Error, { tool: 'futures_ping' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -57,7 +53,7 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
       schema: FuturesSymbolSchema,
       handler: async () => {
         try { const r = await c.futuresTime(); return ok({ serverTime: r, timestamp: Date.now() }); }
-        catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        catch (e) { logError(e as Error, { tool: 'futures_time' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -78,7 +74,7 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
             return ok({ symbol: a.symbol, info: info || null, timestamp: Date.now() });
           }
           return ok(r);
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_exchange_info' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -93,7 +89,7 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
           validateSymbol(a.symbol);
           const r = await c.futuresBook({ symbol: a.symbol, limit: a.limit }) as { bids: unknown; asks: unknown; lastUpdateId: number };
           return ok({ symbol: a.symbol, bids: r.bids, asks: r.asks, lastUpdateId: r.lastUpdateId, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_orderbook' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -111,7 +107,7 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
             c.futuresCandles({ symbol: a.symbol, interval: a.interval, limit: a.limit }),
           );
           return ok({ symbol: a.symbol, interval: a.interval, data: r, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_klines' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -130,7 +126,7 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
           if (a.endTime !== undefined) params.endTime = a.endTime;
           const r = await c.futuresAggTrades(params) as unknown[];
           return ok({ symbol: a.symbol, trades: r, count: r.length, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_agg_trades' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -145,7 +141,7 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
           validateSymbol(a.symbol);
           const r = await c.futuresTrades({ symbol: a.symbol, limit: a.limit }) as unknown[];
           return ok({ symbol: a.symbol, trades: r, count: r.length, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_trades' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -160,7 +156,7 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
           if (a.symbol) validateSymbol(a.symbol);
           const r = await c.futuresDailyStats(a.symbol ? { symbol: a.symbol } : undefined);
           return ok({ data: Array.isArray(r) ? r : [r], timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_daily_stats' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -178,7 +174,7 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
             return ok({ symbol: a.symbol, price: r[a.symbol] || null, timestamp: Date.now() });
           }
           return ok({ prices: r, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_prices' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -198,7 +194,7 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
             return ok({ symbol: a.symbol, ticker, timestamp: Date.now() });
           }
           return ok({ tickers: r, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_all_book_tickers' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -212,7 +208,7 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
         try {
           const r = await c.futuresMarkPrice(a.symbol ? { symbol: a.symbol } : undefined);
           return ok({ data: Array.isArray(r) ? r : [r], timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_mark_price' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 

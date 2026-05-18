@@ -10,19 +10,15 @@
  * - EMA/DEMA/RMA 的内部平滑有回退逻辑，数据足够后用 getResultOrThrow() 确保非空
  * - DMA/DX/ADX/PSAR 等复合指标同样使用 getResultOrThrow()
  */
+
 import { SMA, EMA, DEMA, RMA, WMA, WSMA, DMA, ADX, DX, PSAR, LinearRegression, VWAP } from 'trading-signals';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { logError } from '../../utils/error-handling.js';
 import type { ToolDefinition } from '../../types/common.js';
 import { roundValue } from './format.js';
+import { wrapHandler } from '../../utils/response.js';
 import { SMAInput, EMAInput, DEMAInput, RMAInput, WMAInput, WSMAInput, DMAInput, DXInput, ADXInput, PSARInput, LinRegInput, VWAPInput } from './schemas.js';
 
 /** 平滑算法名称 → 构造函数映射，供 DMA/DX/ADX 的内部平滑选择用 */
 const ctors: Record<string, new (n: number) => { add(v: number): number | null; getResultOrThrow(): unknown }> = { EMA, RMA, SMA, WMA, WSMA };
-
-function ok(data: unknown): CallToolResult {
-  return { content: [{ type: 'text', text: JSON.stringify(roundValue(data), null, 2) }] };
-}
 
 /**
  * 根据平滑类型名称查找对应的构造函数
@@ -39,59 +35,65 @@ function pickCtor(name?: string): new (n: number) => { add(v: number): number | 
 }
 
 export const trendTools: ToolDefinition[] = [
-  { name: 'indicator_sma', description: '简单移动平均线 (SMA)', schema: SMAInput, handler: async (a: unknown) => { const { values, interval } = a as { values: number[]; interval: number }; try { const i = new SMA(interval); for (const v of values) i.add(v); return ok({ indicator: 'SMA', interval, last: i.getResult() }); } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); } } },
-  { name: 'indicator_ema', description: '指数移动平均线 (EMA)', schema: EMAInput, handler: async (a: unknown) => { const { values, interval } = a as { values: number[]; interval: number }; try { const i = new EMA(interval); for (const v of values) i.add(v); return ok({ indicator: 'EMA', interval, last: i.getResultOrThrow() }); } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); } } },
-  { name: 'indicator_dema', description: '双指数移动平均线 (DEMA)', schema: DEMAInput, handler: async (a: unknown) => { const { values, interval } = a as { values: number[]; interval: number }; try { const i = new DEMA(interval); for (const v of values) i.add(v); return ok({ indicator: 'DEMA', interval, last: i.getResultOrThrow() }); } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); } } },
-  { name: 'indicator_rma', description: '相对移动平均线 (RMA)', schema: RMAInput, handler: async (a: unknown) => { const { values, interval } = a as { values: number[]; interval: number }; try { const i = new RMA(interval); for (const v of values) i.add(v); return ok({ indicator: 'RMA', interval, last: i.getResultOrThrow() }); } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); } } },
-  { name: 'indicator_wma', description: '加权移动平均线 (WMA)', schema: WMAInput, handler: async (a: unknown) => { const { values, interval } = a as { values: number[]; interval: number }; try { const i = new WMA(interval); for (const v of values) i.add(v); return ok({ indicator: 'WMA', interval, last: i.getResult() }); } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); } } },
-  { name: 'indicator_wsma', description: "Wilder's 平滑移动平均线 (WSMA)", schema: WSMAInput, handler: async (a: unknown) => { const { values, interval } = a as { values: number[]; interval: number }; try { const i = new WSMA(interval); for (const v of values) i.add(v); return ok({ indicator: 'WSMA', interval, last: i.getResult() }); } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); } } },
+  { name: 'indicator_sma', description: '简单移动平均线 (SMA)', schema: SMAInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new SMA(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'SMA', interval: args.interval, last: i.getResult() }); }, 'indicator_sma') },
+  { name: 'indicator_ema', description: '指数移动平均线 (EMA)', schema: EMAInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new EMA(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'EMA', interval: args.interval, last: i.getResultOrThrow() }); }, 'indicator_ema') },
+  { name: 'indicator_dema', description: '双指数移动平均线 (DEMA)', schema: DEMAInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new DEMA(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'DEMA', interval: args.interval, last: i.getResultOrThrow() }); }, 'indicator_dema') },
+  { name: 'indicator_rma', description: '相对移动平均线 (RMA)', schema: RMAInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new RMA(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'RMA', interval: args.interval, last: i.getResultOrThrow() }); }, 'indicator_rma') },
+  { name: 'indicator_wma', description: '加权移动平均线 (WMA)', schema: WMAInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new WMA(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'WMA', interval: args.interval, last: i.getResult() }); }, 'indicator_wma') },
+  { name: 'indicator_wsma', description: "Wilder's 平滑移动平均线 (WSMA)", schema: WSMAInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new WSMA(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'WSMA', interval: args.interval, last: i.getResult() }); }, 'indicator_wsma') },
 
   {
     name: 'indicator_dma', description: '双均线 (DMA)', schema: DMAInput,
-    handler: async (a: unknown) => {
-      const { values, short, long, smoothingType } = a as { values: number[]; short: number; long: number; smoothingType?: string };
-      try { const C = pickCtor(smoothingType); const i = new DMA(short, long, C as any); for (const v of values) i.add(v); return ok({ indicator: 'DMA', short, long, result: i.getResultOrThrow() as { long: number; short: number } }); }
-      catch (e) { return ok({ error: true, message: (e as Error).message }); }
-    },
+    handler: wrapHandler((args: { values: number[]; short: number; long: number; smoothingType?: string }) => {
+      const C = pickCtor(args.smoothingType);
+      const i = new DMA(args.short, args.long, C as any);
+      for (const v of args.values) i.add(v);
+      return roundValue({ indicator: 'DMA', short: args.short, long: args.long, result: i.getResultOrThrow() as { long: number; short: number } });
+    }, 'indicator_dma'),
   },
   {
     name: 'indicator_dx', description: '方向性运动指标 (DX)', schema: DXInput,
-    handler: async (a: unknown) => {
-      const { candles, interval, smoothingType } = a as { candles: { high: number; low: number; close: number }[]; interval: number; smoothingType?: string };
-      try { const C = pickCtor(smoothingType); const i = new DX(interval, C as any); for (const c of candles) i.add(c); const ind = i as unknown as { mdi?: number; pdi?: number }; return ok({ indicator: 'DX', interval, value: i.getResultOrThrow(), pdi: ind.pdi, mdi: ind.mdi }); }
-      catch (e) { return ok({ error: true, message: (e as Error).message }); }
-    },
+    handler: wrapHandler((args: { candles: { high: number; low: number; close: number }[]; interval: number; smoothingType?: string }) => {
+      const C = pickCtor(args.smoothingType);
+      const i = new DX(args.interval, C as any);
+      for (const c of args.candles) i.add(c);
+      const ind = i as unknown as { mdi?: number; pdi?: number };
+      return roundValue({ indicator: 'DX', interval: args.interval, value: i.getResultOrThrow(), pdi: ind.pdi, mdi: ind.mdi });
+    }, 'indicator_dx'),
   },
   {
     name: 'indicator_adx', description: '平均趋向指数 (ADX)', schema: ADXInput,
-    handler: async (a: unknown) => {
-      const { candles, interval, smoothingType } = a as { candles: { high: number; low: number; close: number }[]; interval: number; smoothingType?: string };
-      try { const C = pickCtor(smoothingType); const i = new ADX(interval, C as any); for (const c of candles) i.add(c); const ind = i as unknown as { pdi?: number; mdi?: number }; return ok({ indicator: 'ADX', interval, value: i.getResultOrThrow(), pdi: ind.pdi, mdi: ind.mdi }); }
-      catch (e) { return ok({ error: true, message: (e as Error).message }); }
-    },
+    handler: wrapHandler((args: { candles: { high: number; low: number; close: number }[]; interval: number; smoothingType?: string }) => {
+      const C = pickCtor(args.smoothingType);
+      const i = new ADX(args.interval, C as any);
+      for (const c of args.candles) i.add(c);
+      const ind = i as unknown as { pdi?: number; mdi?: number };
+      return roundValue({ indicator: 'ADX', interval: args.interval, value: i.getResultOrThrow(), pdi: ind.pdi, mdi: ind.mdi });
+    }, 'indicator_adx'),
   },
   {
     name: 'indicator_linreg', description: '线性回归 (Linear Regression)', schema: LinRegInput,
-    handler: async (a: unknown) => {
-      const { values, interval } = a as { values: number[]; interval: number };
-      try { const i = new LinearRegression(interval); for (const v of values) i.add(v); return ok({ indicator: 'LinearRegression', interval, result: i.getResultOrThrow() as { prediction: number; slope: number; intercept: number } }); }
-      catch (e) { return ok({ error: true, message: (e as Error).message }); }
-    },
+    handler: wrapHandler((args: { values: number[]; interval: number }) => {
+      const i = new LinearRegression(args.interval);
+      for (const v of args.values) i.add(v);
+      return roundValue({ indicator: 'LinearRegression', interval: args.interval, result: i.getResultOrThrow() as { prediction: number; slope: number; intercept: number } });
+    }, 'indicator_linreg'),
   },
   {
     name: 'indicator_psar', description: '抛物线 SAR (PSAR)', schema: PSARInput,
-    handler: async (a: unknown) => {
-      const { candles, accelerationStep, accelerationMax } = a as { candles: { high: number; low: number }[]; accelerationStep: number; accelerationMax: number };
-      try { const i = new PSAR({ accelerationStep, accelerationMax }); let last: number | null = null; for (const c of candles) last = i.add(c); return ok({ indicator: 'PSAR', accelerationStep, accelerationMax, last }); }
-      catch (e) { return ok({ error: true, message: (e as Error).message }); }
-    },
+    handler: wrapHandler((args: { candles: { high: number; low: number }[]; accelerationStep: number; accelerationMax: number }) => {
+      const i = new PSAR({ accelerationStep: args.accelerationStep, accelerationMax: args.accelerationMax });
+      let last: number | null = null;
+      for (const c of args.candles) last = i.add(c);
+      return roundValue({ indicator: 'PSAR', accelerationStep: args.accelerationStep, accelerationMax: args.accelerationMax, last });
+    }, 'indicator_psar'),
   },
   {
     name: 'indicator_vwap', description: '成交量加权平均价 (VWAP)', schema: VWAPInput,
-    handler: async (a: unknown) => {
-      const { candles } = a as { candles: { open: number; high: number; low: number; close: number; volume: number }[] };
-      try { const i = new VWAP(); for (const c of candles) i.add(c); return ok({ indicator: 'VWAP', last: i.getResultOrThrow() }); }
-      catch (e) { return ok({ error: true, message: (e as Error).message }); }
-    },
+    handler: wrapHandler((args: { candles: { open: number; high: number; low: number; close: number; volume: number }[] }) => {
+      const i = new VWAP();
+      for (const c of args.candles) i.add(c);
+      return roundValue({ indicator: 'VWAP', last: i.getResultOrThrow() });
+    }, 'indicator_vwap'),
   },
 ];

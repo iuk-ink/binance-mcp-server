@@ -15,9 +15,10 @@
  * - 辅助工具 (2): account_report, quick_order
  */
 
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { validateSymbol, validateQuantity, validatePrice } from '../../utils/validation.js';
 import { logError } from '../../utils/error-handling.js';
+import { withRetry } from '../../utils/rate-limiter.js';
+import { ok } from '../../utils/response.js';
 import {
   FuturesSymbolSchema,
   FuturesLeverageSchema,
@@ -39,14 +40,10 @@ import {
   FuturesAccountReportSchema,
   FuturesQuickOrderSchema,
 } from './schemas.js';
-import type { ToolDefinition } from '../../types/common.js';
-
-function ok(data: unknown): CallToolResult {
-  return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
-}
+import type { ToolDefinition, BinanceClient } from '../../types/common.js';
 
 export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition[] {
-  const c = client as Record<string, (...args: unknown[]) => unknown>;
+  const c = client as BinanceClient;
 
   return [
     // ==================== 账户查询 ====================
@@ -58,7 +55,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
       schema: FuturesSymbolSchema,
       handler: async () => {
         try { const r = await c.futuresAccountBalance(); return ok({ balances: r, timestamp: Date.now() }); }
-        catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        catch (e) { logError(e as Error, { tool: 'futures_account_balance' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -78,7 +75,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           if (a.limit !== undefined) params.limit = a.limit;
           const r = await c.futuresIncome(params) as unknown[];
           return ok({ data: r, count: r.length, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_income' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -98,7 +95,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           if (a.fromId !== undefined) params.fromId = a.fromId;
           const r = await c.futuresUserTrades(params) as unknown[];
           return ok({ symbol: a.symbol, trades: r, count: r.length, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_user_trades' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -115,7 +112,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           validateSymbol(a.symbol);
           const r = await c.futuresLeverage({ symbol: a.symbol, leverage: a.leverage });
           return ok({ ...(r as object), timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_leverage' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -130,7 +127,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           validateSymbol(a.symbol);
           const r = await c.futuresMarginType({ symbol: a.symbol, marginType: a.marginType });
           return ok({ ...(r as object), timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_margin_type' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -149,7 +146,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           // 操作后查询最新账户余额，供用户确认资金变动
           const balances = await c.futuresAccountBalance() as unknown;
           return ok({ ...(r as object), balances, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_position_margin' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -169,7 +166,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           if (a.limit !== undefined) params.limit = a.limit;
           const r = await c.futuresMarginHistory(params) as unknown[];
           return ok({ data: r, count: r.length, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_margin_history' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -185,7 +182,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
         try {
           const r = await c.futuresLeverageBracket(a.symbol ? { symbol: a.symbol } : undefined);
           return ok({ brackets: r, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_leverage_bracket' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -212,9 +209,9 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           if (a.callbackRate !== undefined) params.callbackRate = a.callbackRate;
           if (a.workingType !== undefined) params.workingType = a.workingType;
           if (a.closePosition !== undefined) params.closePosition = a.closePosition;
-          const r = await c.futuresOrder(params);
+          const r = await withRetry(async () => c.futuresOrder(params));
           return ok({ ...(r as object), timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_order' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -235,7 +232,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           if (a.price !== undefined) params.price = a.price;
           const r = await c.futuresUpdateOrder(params);
           return ok({ ...(r as object), timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_update_order' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -250,7 +247,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           validateSymbol(a.symbol as string);
           const r = await c.futuresGetOrder(a);
           return ok({ ...(r as object), timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_get_order' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -270,7 +267,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           if (a.limit !== undefined) params.limit = a.limit;
           const r = await c.futuresAllOrders(params) as unknown[];
           return ok({ symbol: a.symbol, orders: r, count: r.length, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_all_orders' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -288,9 +285,9 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           }
           // binance-api-node 底层用 encodeURIComponent 序列化参数，
           // JavaScript 数组直接编码会变成 "[object Object]"，必须 JSON 序列化
-          const r = await c.futuresBatchOrders({ batchOrders: JSON.stringify(a.batchOrders) });
+          const r = await withRetry(async () => c.futuresBatchOrders({ batchOrders: JSON.stringify(a.batchOrders) }));
           return ok({ orders: r, count: (r as unknown[]).length, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_batch_orders' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -307,9 +304,9 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           // binance-api-node 需要 JSON 字符串，handler 内自动序列化数组参数
           if (a.orderIdList) params.orderIdList = JSON.stringify(a.orderIdList);
           if (a.origClientOrderIdList) params.origClientOrderIdList = JSON.stringify(a.origClientOrderIdList);
-          const r = await c.futuresCancelBatchOrders(params);
+          const r = await withRetry(async () => c.futuresCancelBatchOrders(params));
           return ok({ cancelled: r, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_cancel_batch_orders' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -332,7 +329,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           if (a.clientAlgoId) { params.clientAlgoId = a.clientAlgoId; params.conditional = true; }
           const r = await c.futuresCancelOrder(params);
           return ok({ cancelled: r, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_cancel_order' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -353,7 +350,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           const cancelledIds = beforeOpen.map((o) => o.orderId);
           await c.futuresCancelAllOpenOrders({ symbol: a.symbol });
           return ok({ symbol: a.symbol, cancelledCount: cancelledIds.length, cancelledOrderIds: cancelledIds, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_cancel_all_open_orders' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -367,15 +364,15 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
         try {
           const params = a.symbol ? { symbol: a.symbol } : undefined;
           // 并行查询普通单和条件单（Binance REST 分两个端点）
-          const ordersPromise = c.futuresOpenOrders(params) as Promise<unknown[]>;
-          const algoFn = (c as Record<string, (...args: unknown[]) => unknown>).futuresOpenAlgoOrders;
+          const ordersPromise = withRetry(async () => c.futuresOpenOrders(params) as Promise<unknown[]>);
+          const algoFn = (c as BinanceClient).futuresOpenAlgoOrders;
           const algoPromise: Promise<unknown[]> = algoFn
             ? (algoFn(params) as Promise<unknown[]>).catch(() => [])
             : Promise.resolve([]);
           const [orders, algoOrders] = await Promise.all([ordersPromise, algoPromise]);
           const total = (orders?.length ?? 0) + (algoOrders?.length ?? 0);
           return ok({ orders, algoOrders, count: total, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_open_orders' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -389,13 +386,13 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
       handler: async () => {
         try {
           const [balances, positions, openOrders, accountInfo] = await Promise.all([
-            c.futuresAccountBalance() as Promise<unknown>,
-            (c as Record<string, (...args: unknown[]) => unknown>).futuresPositionRisk?.() as Promise<unknown> ?? Promise.resolve(null),
-            c.futuresOpenOrders() as Promise<unknown>,
-            (c as Record<string, (...args: unknown[]) => unknown>).futuresAccountInfo?.() as Promise<unknown> ?? Promise.resolve(null),
+            withRetry(async () => c.futuresAccountBalance() as Promise<unknown>),
+            withRetry(async () => (c as BinanceClient).futuresPositionRisk?.() as Promise<unknown> ?? Promise.resolve(null)),
+            withRetry(async () => c.futuresOpenOrders() as Promise<unknown>),
+            withRetry(async () => (c as BinanceClient).futuresAccountInfo?.() as Promise<unknown> ?? Promise.resolve(null)),
           ]);
           return ok({ balances, positions, openOrders, accountInfo, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_account_report' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
 
@@ -429,7 +426,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           if (a.positionSide) params.positionSide = a.positionSide;
           const r = await c.futuresOrder(params);
           return ok({ type: a.orderType, orderType, triggerPrice, order: r, timestamp: Date.now() });
-        } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
+        } catch (e) { logError(e as Error, { tool: 'futures_quick_order' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
   ];

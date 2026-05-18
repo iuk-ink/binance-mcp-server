@@ -35,3 +35,13 @@ export interface ToolDefinition<Args = unknown> {
   /** 工具执行函数，接收校验后的参数，返回标准 MCP 调用结果 */
   handler: (args: Args) => Promise<CallToolResult>;
 }
+
+/**
+ * Binance API 客户端动态类型
+ *
+ * @description
+ * binance-api-node 是 CJS 模块，通过 createRequire 动态加载。
+ * 其返回的方法无法在编译期获取精确类型，因此使用此动态类型标注。
+ * 避免在多处重复书写 Record<string, (...args: unknown[]) => unknown>。
+ */
+export type BinanceClient = Record<string, (...args: unknown[]) => unknown>;

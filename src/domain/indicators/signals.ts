@@ -12,20 +12,16 @@
  */
 
 import { EMA, MACD, RSI, SMA, BollingerBands } from 'trading-signals';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { logError } from '../../utils/error-handling.js';
 import type { ToolDefinition } from '../../types/common.js';
 import { roundValue } from './format.js';
+import { ok } from '../../utils/response.js';
 import {
   SignalEmaCrossInput,
   SignalMacdRsiInput,
   SignalBbRsiInput,
   SignalMACrossInput,
 } from './schemas.js';
-
-function ok(data: unknown): CallToolResult {
-  return { content: [{ type: 'text', text: JSON.stringify(roundValue(data), null, 2) }] };
-}
 
 /** 推断信号方向 */
 function bias(v: number, bullish: boolean): string {
@@ -61,12 +57,12 @@ export const signalTools: ToolDefinition[] = [
         const cf = currFast.getResultOrThrow(), cs = currSlow.getResultOrThrow();
         const pf = prevFast.getResultOrThrow(), ps = prevSlow.getResultOrThrow();
         const cross = (pf < ps && cf > cs) ? 'golden_cross' : (pf > ps && cf < cs) ? 'death_cross' : 'none';
-        return ok({
+        return ok(roundValue({
           signal: bias(cf - cs, true),
           fast: { current: cf, previous: pf },
           slow: { current: cs, previous: ps },
           cross,
-        });
+        }));
       } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
     },
   },
@@ -95,7 +91,7 @@ export const signalTools: ToolDefinition[] = [
         else if (m.histogram < 0 && rv < 30) direction = 'bearish_oversold';
         else if (m.histogram > 0) direction = 'bullish';
         else direction = 'bearish';
-        return ok({ signal: direction, macd: m, rsi: rv });
+        return ok(roundValue({ signal: direction, macd: m, rsi: rv }));
       } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
     },
   },
@@ -127,7 +123,7 @@ export const signalTools: ToolDefinition[] = [
         else if (rv < 30) signal = 'oversold';
         else if (rv > 70) signal = 'overbought';
         else signal = 'neutral';
-        return ok({ signal, lastPrice, bollinger: bbResult, rsi: rv });
+        return ok(roundValue({ signal, lastPrice, bollinger: bbResult, rsi: rv }));
       } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
     },
   },
@@ -157,12 +153,12 @@ export const signalTools: ToolDefinition[] = [
         const cs = currShort.getResult() as number; const cl = currLong.getResult() as number;
         const ps = prevShort.getResult() as number; const pl = prevLong.getResult() as number;
         const cross = (ps < pl && cs > cl) ? 'golden_cross' : (ps > pl && cs < cl) ? 'death_cross' : 'none';
-        return ok({
+        return ok(roundValue({
           signal: bias(cs - cl, true),
           shortAvg: { current: cs, previous: ps },
           longAvg: { current: cl, previous: pl },
           cross,
-        });
+        }));
       } catch (e) { logError(e as Error); return ok({ error: true, message: (e as Error).message }); }
     },
   },

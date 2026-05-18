@@ -31,13 +31,14 @@ import { createRequire } from 'node:module';
 const requireBinance = createRequire(import.meta.url);
 const Binance = requireBinance('binance-api-node').default as (
   options?: Record<string, unknown>,
-) => Record<string, (...args: unknown[]) => unknown>;
+) => BinanceClient;
+
 import { getBinanceConfig, hasApiCredentials, getServerInfo } from './config/binance.js';
 import { logger } from './utils/logger.js';
 import { createFuturesPublicTools } from './domain/futures/public.js';
 import { createFuturesAuthenticatedTools } from './domain/futures/authenticated.js';
 import { createIndicatorTools } from './domain/indicators/index.js';
-import type { ToolDefinition } from './types/common.js';
+import type { ToolDefinition, BinanceClient } from './types/common.js';
 
 /**
  * 批量注册工具到 McpServer

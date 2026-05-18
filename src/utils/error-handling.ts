@@ -106,9 +106,13 @@ export function sanitizeError(message: string): string {
  * 在 debug 级别下会额外输出完整堆栈信息。
  *
  * @param error - 待记录的错误对象
+ * @param context - 可选的错误上下文（如工具名称），用于辅助排查
  */
-export function logError(error: Error): void {
+export function logError(error: Error, context?: Record<string, unknown>): void {
   logger.error(`${error.name}: ${sanitizeError(error.message)}`);
+  if (context) {
+    logger.info('错误上下文', context);
+  }
   if (process.env.LOG_LEVEL === 'debug' && error.stack) {
     console.error(error.stack);
   }
