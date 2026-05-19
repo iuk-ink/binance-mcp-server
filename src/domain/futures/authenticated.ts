@@ -378,20 +378,32 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
 
     // ==================== 辅助工具 ====================
 
-    /** 账户全景报告 — 聚合余额、持仓、活跃订单、账户信息 */
+    /** 账户全景报告 — 聚合余额、持仓、活跃订单、账户信息，默认过滤零持仓 */
     {
       name: 'futures_account_report',
-      description: '获取期货账户全景报告（余额+持仓+活跃订单+账户模式）',
+      description: '获取期货账户全景报告（余额+持仓+活跃订单+账户模式）。默认过滤零持仓，传 hideZeroPositions=false 可查看全部',
       schema: FuturesAccountReportSchema,
-      handler: async () => {
+      handler: async (args) => {
+        const a = args as { hideZeroPositions?: boolean };
         try {
+          const hideZero = a.hideZeroPositions !== false;
           const [balances, positions, openOrders, accountInfo] = await Promise.all([
             withRetry(async () => c.futuresAccountBalance() as Promise<unknown>),
             withRetry(async () => (c as BinanceClient).futuresPositionRisk?.() as Promise<unknown> ?? Promise.resolve(null)),
             withRetry(async () => c.futuresOpenOrders() as Promise<unknown>),
             withRetry(async () => (c as BinanceClient).futuresAccountInfo?.() as Promise<unknown> ?? Promise.resolve(null)),
           ]);
-          return ok({ balances, positions, openOrders, accountInfo, timestamp: Date.now() });
+          const filteredPositions = hideZero && Array.isArray(positions)
+            ? (positions as Array<{ positionAmt: string }>)
+                .filter(p => parseFloat(p.positionAmt) !== 0)
+            : positions;
+          const totalPositions = Array.isArray(positions) ? positions.length : 0;
+          const result: Record<string, unknown> = { balances, positions: filteredPositions, openOrders, accountInfo, timestamp: Date.now() };
+          if (hideZero && totalPositions > (Array.isArray(filteredPositions) ? filteredPositions.length : 0)) {
+            result.totalPositions = totalPositions;
+            result.filteredOut = totalPositions - (Array.isArray(filteredPositions) ? filteredPositions.length : 0);
+          }
+          return ok(result);
         } catch (e) { logError(e as Error, { tool: 'futures_account_report' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },

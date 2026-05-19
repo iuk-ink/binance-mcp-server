@@ -35,15 +35,15 @@ function pickCtor(name?: string): new (n: number) => { add(v: number): number | 
 }
 
 export const trendTools: ToolDefinition[] = [
-  { name: 'indicator_sma', description: '简单移动平均线 (SMA)', schema: SMAInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new SMA(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'SMA', interval: args.interval, last: i.getResult() }); }, 'indicator_sma') },
-  { name: 'indicator_ema', description: '指数移动平均线 (EMA)', schema: EMAInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new EMA(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'EMA', interval: args.interval, last: i.getResultOrThrow() }); }, 'indicator_ema') },
-  { name: 'indicator_dema', description: '双指数移动平均线 (DEMA)', schema: DEMAInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new DEMA(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'DEMA', interval: args.interval, last: i.getResultOrThrow() }); }, 'indicator_dema') },
-  { name: 'indicator_rma', description: '相对移动平均线 (RMA)', schema: RMAInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new RMA(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'RMA', interval: args.interval, last: i.getResultOrThrow() }); }, 'indicator_rma') },
-  { name: 'indicator_wma', description: '加权移动平均线 (WMA)', schema: WMAInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new WMA(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'WMA', interval: args.interval, last: i.getResult() }); }, 'indicator_wma') },
-  { name: 'indicator_wsma', description: "Wilder's 平滑移动平均线 (WSMA)", schema: WSMAInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new WSMA(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'WSMA', interval: args.interval, last: i.getResult() }); }, 'indicator_wsma') },
+  { name: 'indicator_sma', description: '简单移动平均线 (SMA)。需要至少 interval 个数据点', schema: SMAInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new SMA(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'SMA', interval: args.interval, last: i.getResult() }); }, 'indicator_sma') },
+  { name: 'indicator_ema', description: '指数移动平均线 (EMA)。需要至少 interval 个数据点', schema: EMAInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new EMA(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'EMA', interval: args.interval, last: i.getResultOrThrow() }); }, 'indicator_ema') },
+  { name: 'indicator_dema', description: '双指数移动平均线 (DEMA)。需要至少 interval 个数据点', schema: DEMAInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new DEMA(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'DEMA', interval: args.interval, last: i.getResultOrThrow() }); }, 'indicator_dema') },
+  { name: 'indicator_rma', description: '相对移动平均线 (RMA)。需要至少 interval 个数据点', schema: RMAInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new RMA(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'RMA', interval: args.interval, last: i.getResultOrThrow() }); }, 'indicator_rma') },
+  { name: 'indicator_wma', description: '加权移动平均线 (WMA)。需要至少 interval 个数据点', schema: WMAInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new WMA(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'WMA', interval: args.interval, last: i.getResult() }); }, 'indicator_wma') },
+  { name: 'indicator_wsma', description: "Wilder's 平滑移动平均线 (WSMA)。需要至少 interval 个数据点", schema: WSMAInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new WSMA(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'WSMA', interval: args.interval, last: i.getResult() }); }, 'indicator_wsma') },
 
   {
-    name: 'indicator_dma', description: '双均线 (DMA)', schema: DMAInput,
+    name: 'indicator_dma', description: '双均线 (DMA)。需要至少 max(short, long) 个数据点', schema: DMAInput,
     handler: wrapHandler((args: { values: number[]; short: number; long: number; smoothingType?: string }) => {
       const C = pickCtor(args.smoothingType);
       const i = new DMA(args.short, args.long, C as any);
@@ -52,7 +52,7 @@ export const trendTools: ToolDefinition[] = [
     }, 'indicator_dma'),
   },
   {
-    name: 'indicator_dx', description: '方向性运动指标 (DX)', schema: DXInput,
+    name: 'indicator_dx', description: '方向性运动指标 (DX)。需要至少 2×interval 个数据点（如 interval=14 则需 ~27 个）', schema: DXInput,
     handler: wrapHandler((args: { candles: { high: number; low: number; close: number }[]; interval: number; smoothingType?: string }) => {
       const C = pickCtor(args.smoothingType);
       const i = new DX(args.interval, C as any);
@@ -62,7 +62,7 @@ export const trendTools: ToolDefinition[] = [
     }, 'indicator_dx'),
   },
   {
-    name: 'indicator_adx', description: '平均趋向指数 (ADX)', schema: ADXInput,
+    name: 'indicator_adx', description: '平均趋向指数 (ADX)。需要至少 2×interval 个数据点（如 interval=14 则需 ~27 个，不足会返回错误）', schema: ADXInput,
     handler: wrapHandler((args: { candles: { high: number; low: number; close: number }[]; interval: number; smoothingType?: string }) => {
       const C = pickCtor(args.smoothingType);
       const i = new ADX(args.interval, C as any);
@@ -72,7 +72,7 @@ export const trendTools: ToolDefinition[] = [
     }, 'indicator_adx'),
   },
   {
-    name: 'indicator_linreg', description: '线性回归 (Linear Regression)', schema: LinRegInput,
+    name: 'indicator_linreg', description: '线性回归 (Linear Regression)。需要至少 interval 个数据点', schema: LinRegInput,
     handler: wrapHandler((args: { values: number[]; interval: number }) => {
       const i = new LinearRegression(args.interval);
       for (const v of args.values) i.add(v);
@@ -80,7 +80,7 @@ export const trendTools: ToolDefinition[] = [
     }, 'indicator_linreg'),
   },
   {
-    name: 'indicator_psar', description: '抛物线 SAR (PSAR)', schema: PSARInput,
+    name: 'indicator_psar', description: '抛物线 SAR (PSAR)。建议至少 4 根 K 线，更多数据效果更好', schema: PSARInput,
     handler: wrapHandler((args: { candles: { high: number; low: number }[]; accelerationStep: number; accelerationMax: number }) => {
       const i = new PSAR({ accelerationStep: args.accelerationStep, accelerationMax: args.accelerationMax });
       let last: number | null = null;
@@ -89,7 +89,7 @@ export const trendTools: ToolDefinition[] = [
     }, 'indicator_psar'),
   },
   {
-    name: 'indicator_vwap', description: '成交量加权平均价 (VWAP)', schema: VWAPInput,
+    name: 'indicator_vwap', description: '成交量加权平均价 (VWAP)。从第一根 K 线即开始计算', schema: VWAPInput,
     handler: wrapHandler((args: { candles: { open: number; high: number; low: number; close: number; volume: number }[] }) => {
       const i = new VWAP();
       for (const c of args.candles) i.add(c);

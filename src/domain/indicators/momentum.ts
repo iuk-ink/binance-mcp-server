@@ -31,7 +31,7 @@ function sig(ind: unknown) { const s = (ind as { getSignal?: () => { state: stri
 
 export const momentumTools: ToolDefinition[] = [
   {
-    name: 'indicator_ao', description: 'Awesome Oscillator (AO)', schema: AOInput,
+    name: 'indicator_ao', description: 'Awesome Oscillator (AO)。需要至少 longInterval 个数据点', schema: AOInput,
     handler: wrapHandler((args: { candles: { high: number; low: number }[]; shortInterval: number; longInterval: number; smoothingType?: string }) => {
       const i = new AO(args.shortInterval, args.longInterval, (args.smoothingType === 'SMA' ? SMA : undefined) as any);
       const k = i as unknown as { add(v: { high: number; low: number }): number | null };
@@ -40,34 +40,34 @@ export const momentumTools: ToolDefinition[] = [
       return roundValue({ indicator: 'AO', short: args.shortInterval, long: args.longInterval, last, ...sig(i) });
     }, 'indicator_ao'),
   },
-  { name: 'indicator_mom', description: '动量指标 (MOM/MTM)', schema: MOMInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new MOM(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'MOM', interval: args.interval, last: i.getResultOrThrow(), ...sig(i) }); }, 'indicator_mom') },
+  { name: 'indicator_mom', description: '动量指标 (MOM/MTM)。需要至少 interval 个数据点', schema: MOMInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new MOM(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'MOM', interval: args.interval, last: i.getResultOrThrow(), ...sig(i) }); }, 'indicator_mom') },
   {
-    name: 'indicator_cci', description: '商品通道指数 (CCI)', schema: CCIInput,
+    name: 'indicator_cci', description: '商品通道指数 (CCI)。需要至少 interval 个数据点', schema: CCIInput,
     handler: wrapHandler((args: { candles: { high: number; low: number; close: number }[]; interval: number }) => { const i = new CCI(args.interval); for (const c of args.candles) i.add(c); return roundValue({ indicator: 'CCI', interval: args.interval, last: i.getResultOrThrow(), ...sig(i) }); }, 'indicator_cci'),
   },
   {
-    name: 'indicator_macd', description: '指数平滑异同移动平均线 (MACD)', schema: MACDInput,
+    name: 'indicator_macd', description: '指数平滑异同移动平均线 (MACD)。需要至少 slow+signal 个数据点（默认 35 个）', schema: MACDInput,
     handler: wrapHandler((args: { values: number[]; fast: number; slow: number; signal: number; indicatorType?: string }) => { const ct = { EMA, DEMA }; const C = ct[args.indicatorType === 'DEMA' ? 'DEMA' : 'EMA'] || EMA; const i = new MACD(new C(args.fast), new C(args.slow), new C(args.signal)); for (const v of args.values) i.add(v); return roundValue({ indicator: 'MACD', fast: args.fast, slow: args.slow, signal: args.signal, result: i.getResultOrThrow() as { histogram: number; macd: number; signal: number }, ...sig(i) }); }, 'indicator_macd'),
   },
   {
-    name: 'indicator_obv', description: '能量潮指标 (OBV)', schema: OBVInput,
+    name: 'indicator_obv', description: '能量潮指标 (OBV)。需要至少 interval 个数据点', schema: OBVInput,
     handler: wrapHandler((args: { candles: { open: number; high: number; low: number; close: number; volume: number }[]; interval: number }) => { const i = new OBV(args.interval); for (const c of args.candles) i.add(c); return roundValue({ indicator: 'OBV', interval: args.interval, last: i.getResultOrThrow(), ...sig(i) }); }, 'indicator_obv'),
   },
-  { name: 'indicator_roc', description: '变化率指标 (ROC)', schema: ROCInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new ROC(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'ROC', interval: args.interval, last: i.getResultOrThrow(), ...sig(i) }); }, 'indicator_roc') },
+  { name: 'indicator_roc', description: '变化率指标 (ROC)。需要至少 interval 个数据点', schema: ROCInput, handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new ROC(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'ROC', interval: args.interval, last: i.getResultOrThrow(), ...sig(i) }); }, 'indicator_roc') },
   {
-    name: 'indicator_rsi', description: '相对强弱指数 (RSI)', schema: RSIInput,
+    name: 'indicator_rsi', description: '相对强弱指数 (RSI)。需要至少 interval 个数据点', schema: RSIInput,
     handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new RSI(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'RSI', interval: args.interval, value: i.getResultOrThrow(), ...sig(i) }); }, 'indicator_rsi'),
   },
   {
-    name: 'indicator_stoch', description: '随机振荡器 (Stochastic Oscillator)', schema: StochInput,
+    name: 'indicator_stoch', description: '随机振荡器 (Stochastic Oscillator)。需要至少 n+m 个数据点', schema: StochInput,
     handler: wrapHandler((args: { candles: { high: number; low: number; close: number }[]; n: number; m: number; p: number }) => { const i = new StochasticOscillator(args.n, args.m, args.p); for (const c of args.candles) i.add(c); return roundValue({ indicator: 'Stochastic', n: args.n, m: args.m, p: args.p, result: i.getResultOrThrow() as { stochD: number; stochK: number }, ...sig(i) }); }, 'indicator_stoch'),
   },
   {
-    name: 'indicator_stoch_rsi', description: '随机 RSI (Stochastic RSI)', schema: StochRSIInput,
+    name: 'indicator_stoch_rsi', description: '随机 RSI (Stochastic RSI)。需要至少 2×interval 个数据点（如 interval=14 则需 ~28 个，不足会返回错误）', schema: StochRSIInput,
     handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new StochasticRSI(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'StochRSI', interval: args.interval, last: i.getResultOrThrow(), ...sig(i) }); }, 'indicator_stoch_rsi'),
   },
   {
-    name: 'indicator_tds', description: "Tom DeMark's Sequential Indicator (TDS)", schema: TDSInput,
+    name: 'indicator_tds', description: "Tom DeMark's Sequential Indicator (TDS)。需要至少 50 个数据点才能完成完整计数（不足会返回错误提示）", schema: TDSInput,
     handler: async (a: unknown) => {
       const { values } = a as { values: number[] };
       try {
@@ -84,7 +84,7 @@ export const momentumTools: ToolDefinition[] = [
     },
   },
   {
-    name: 'indicator_williams_r', description: '威廉指标 (Williams %R)', schema: WilliamsRInput,
+    name: 'indicator_williams_r', description: '威廉指标 (Williams %R)。需要至少 interval 个数据点', schema: WilliamsRInput,
     handler: wrapHandler((args: { candles: { high: number; low: number; close: number }[]; interval: number }) => { const i = new WilliamsR(args.interval); for (const c of args.candles) i.add(c); return roundValue({ indicator: 'WilliamsR', interval: args.interval, last: i.getResultOrThrow(), ...sig(i) }); }, 'indicator_williams_r'),
   },
 ];

@@ -43,7 +43,7 @@ export const utilityTools: ToolDefinition[] = [
         isSunday: isSunday(args.timezone, d),
       };
       const weekday = Object.keys(bools).find((k) => bools[k])?.replace('is', '') ?? null;
-      return { function: 'weekday', timezone: args.timezone, date: args.date || 'today', weekday, ...bools };
+      return { function: 'weekday', timezone: args.timezone, date: args.date || 'today', weekday };
     }, 'util_weekday'),
   },
 ];

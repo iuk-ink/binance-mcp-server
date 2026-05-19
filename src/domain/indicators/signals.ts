@@ -34,7 +34,7 @@ export const signalTools: ToolDefinition[] = [
   // ---- EMA 快慢线交叉 ----
   {
     name: 'signal_ema_cross',
-    description: 'EMA 快慢线交叉信号。对比当前值与上一根值判断是否刚发生金叉/死叉，需至少 fast+slow+2 个数据点',
+    description: 'EMA 快慢线交叉信号。需要至少 max(fast, slow)+2 个数据点才可判断金叉/死叉',
     schema: SignalEmaCrossInput,
     handler: async (a: unknown) => {
       const { values, fast, slow } = a as { values: number[]; fast: number; slow: number };
@@ -70,7 +70,7 @@ export const signalTools: ToolDefinition[] = [
   // ---- MACD + RSI 组合 ----
   {
     name: 'signal_macd_rsi',
-    description: 'MACD + RSI 组合信号。综合判断趋势方向和超买超卖，需至少 fast+slow+max(signal,rsiInterval) 个数据点',
+    description: 'MACD + RSI 组合信号。需要至少 max(slow+signal, rsiInterval)+1 个数据点（默认 35 个）',
     schema: SignalMacdRsiInput,
     handler: async (a: unknown) => {
       const { values, fast, slow, signal, rsiInterval } = a as { values: number[]; fast: number; slow: number; signal: number; rsiInterval: number };
@@ -99,7 +99,7 @@ export const signalTools: ToolDefinition[] = [
   // ---- 布林带 + RSI 突破信号 ----
   {
     name: 'signal_bb_rsi',
-    description: '布林带 + RSI 突破信号。识别价格突破上/下轨+RSI 极端时的交易信号，需至少 interval*2 个数据点',
+    description: '布林带 + RSI 突破信号。需要至少 max(interval, rsiInterval)+1 个数据点',
     schema: SignalBbRsiInput,
     handler: async (a: unknown) => {
       const { values, interval, deviationMultiplier, rsiInterval } = a as { values: number[]; interval: number; deviationMultiplier: number; rsiInterval: number };
@@ -131,7 +131,7 @@ export const signalTools: ToolDefinition[] = [
   // ---- 短期/长期均线交叉 ----
   {
     name: 'signal_ma_cross',
-    description: '短期/长期均线交叉信号（金叉/死叉）。同时计算 current 和 previous 两根 K 线判断交叉方向',
+    description: '短期/长期均线交叉信号（金叉/死叉）。需要至少 long+2 个数据点',
     schema: SignalMACrossInput,
     handler: async (a: unknown) => {
       const { values, short, long } = a as { values: number[]; short: number; long: number };

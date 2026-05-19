@@ -167,8 +167,11 @@ export const FuturesOpenOrdersSchema = z.object({
 
 // ---- 辅助工具 ----
 
-/** 账户持仓全景报告 — 无参，自动聚合所有账户信息 */
-export const FuturesAccountReportSchema = z.object({});
+/** 账户持仓全景报告 — 默认过滤零持仓，可传 hideZeroPositions=false 恢复全量 */
+export const FuturesAccountReportSchema = z.object({
+  hideZeroPositions: z.boolean().optional().default(true)
+    .describe('是否过滤零持仓，默认 true。设为 false 可查看历史全部持仓'),
+});
 
 /** 一键止损/止盈 — 根据当前价格和百分比偏移自动计算触发价并下条件单 */
 export const FuturesQuickOrderSchema = z.object({

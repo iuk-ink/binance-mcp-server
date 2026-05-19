@@ -60,7 +60,7 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
     // ---- 交易规则 ----
     {
       name: 'futures_exchange_info',
-      description: '获取期货交易所交易规则和交易对信息（费率、最小下单量等）',
+      description: '获取期货交易所交易规则和交易对信息（费率、最小下单量等）。⚠️ 不传 symbol 返回全量 55k+ 行数据将导致响应过大，强烈建议传 symbol',
       schema: FuturesExchangeInfoSchema,
       handler: async (args) => {
         const a = args as { symbol?: string };
@@ -148,14 +148,18 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
     // ---- 24 小时统计 ----
     {
       name: 'futures_daily_stats',
-      description: '获取期货24小时价格变动统计（涨跌幅、成交量等）',
+      description: '获取期货24小时价格变动统计（涨跌幅、成交量等）。⚠️ 不传 symbol 返回全市场数据（数据量极大），强烈建议传 symbol',
       schema: FuturesDailyStatsSchema,
       handler: async (args) => {
         const a = args as { symbol?: string };
         try {
           if (a.symbol) validateSymbol(a.symbol);
           const r = await c.futuresDailyStats(a.symbol ? { symbol: a.symbol } : undefined);
-          return ok({ data: Array.isArray(r) ? r : [r], timestamp: Date.now() });
+          const data = Array.isArray(r) ? r : [r];
+          if (!a.symbol && data.length > 50) {
+            return ok({ warning: `未指定 symbol，返回全量 ${data.length} 条，已截断至前 50 条。强烈建议传入 symbol 参数过滤`, data: data.slice(0, 50), total: data.length, timestamp: Date.now() });
+          }
+          return ok({ data, timestamp: Date.now() });
         } catch (e) { logError(e as Error, { tool: 'futures_daily_stats' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },
@@ -163,15 +167,18 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
     // ---- 当前价格 ----
     {
       name: 'futures_prices',
-      description: '获取期货当前交易对价格（支持按 symbol 过滤单个交易对）',
+      description: '获取期货当前交易对价格。⚠️ 不传 symbol 会返回全部 600+ 交易对价格（数据量极大），强烈建议传 symbol',
       schema: FuturesPricesSchema,
       handler: async (args) => {
         const a = args as { symbol?: string };
         try {
-          // futuresPrices API 原生支持 symbol 参数，直接过滤比客户端查找更高效
           const r = await c.futuresPrices(a.symbol ? { symbol: a.symbol } : undefined) as Record<string, string>;
           if (a.symbol) {
             return ok({ symbol: a.symbol, price: r[a.symbol] || null, timestamp: Date.now() });
+          }
+          const entries = Object.entries(r);
+          if (entries.length > 50) {
+            return ok({ warning: `未指定 symbol，返回全量 ${entries.length} 个交易对，已截断至前 50 个。强烈建议传入 symbol 过滤`, prices: Object.fromEntries(entries.slice(0, 50)), total: entries.length, timestamp: Date.now() });
           }
           return ok({ prices: r, timestamp: Date.now() });
         } catch (e) { logError(e as Error, { tool: 'futures_prices' }); return ok({ error: true, message: (e as Error).message }); }
@@ -181,17 +188,20 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
     // ---- 最优挂单 ----
     {
       name: 'futures_all_book_tickers',
-      description: '获取期货交易对的最优买卖挂单/买一卖一（支持按 symbol 过滤）',
+      description: '获取期货交易对的最优买卖挂单/买一卖一。⚠️ 不传 symbol 返回全部交易对（数据量极大），强烈建议传 symbol',
       schema: FuturesAllBookTickersSchema,
       handler: async (args) => {
         const a = args as { symbol?: string };
         try {
-          // futuresAllBookTickers 返回 Object<symbol, ticker>，不是数组
           const r = await c.futuresAllBookTickers() as Record<string, { symbol: string }>;
           if (a.symbol) {
             validateSymbol(a.symbol);
             const ticker = r[a.symbol] || null;
             return ok({ symbol: a.symbol, ticker, timestamp: Date.now() });
+          }
+          const entries = Object.entries(r);
+          if (entries.length > 50) {
+            return ok({ warning: `未指定 symbol，返回全量 ${entries.length} 个交易对，已截断至前 50 个。强烈建议传入 symbol 过滤`, tickers: Object.fromEntries(entries.slice(0, 50)), total: entries.length, timestamp: Date.now() });
           }
           return ok({ tickers: r, timestamp: Date.now() });
         } catch (e) { logError(e as Error, { tool: 'futures_all_book_tickers' }); return ok({ error: true, message: (e as Error).message }); }
@@ -201,13 +211,17 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
     // ---- 标记价格 ----
     {
       name: 'futures_mark_price',
-      description: '获取期货标记价格（用于计算未实现盈亏和强平判断）',
+      description: '获取期货标记价格（用于计算未实现盈亏和强平判断）。⚠️ 不传 symbol 返回全部交易对（数据量极大），强烈建议传 symbol',
       schema: FuturesMarkPriceSchema,
       handler: async (args) => {
         const a = args as { symbol?: string };
         try {
           const r = await c.futuresMarkPrice(a.symbol ? { symbol: a.symbol } : undefined);
-          return ok({ data: Array.isArray(r) ? r : [r], timestamp: Date.now() });
+          const data = Array.isArray(r) ? r : [r];
+          if (!a.symbol && data.length > 50) {
+            return ok({ warning: `未指定 symbol，返回全量 ${data.length} 条，已截断至前 50 条。强烈建议传入 symbol 参数过滤`, data: data.slice(0, 50), total: data.length, timestamp: Date.now() });
+          }
+          return ok({ data, timestamp: Date.now() });
         } catch (e) { logError(e as Error, { tool: 'futures_mark_price' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },

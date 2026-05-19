@@ -18,7 +18,7 @@ const ctors: Record<string, unknown> = { EMA, SMA };
 
 export const volatilityTools: ToolDefinition[] = [
   {
-    name: 'indicator_abands', description: '加速带 (Acceleration Bands)', schema: ABandsInput,
+    name: 'indicator_abands', description: '加速带 (Acceleration Bands)。需要至少 interval 个数据点', schema: ABandsInput,
     handler: wrapHandler((args: { candles: { high: number; low: number; close: number }[]; interval: number; width: number; smoothingType?: string }) => {
       const i = new AccelerationBands(args.interval, args.width, (ctors[args.smoothingType || 'SMA'] || SMA) as any);
       let last = null;
@@ -27,7 +27,7 @@ export const volatilityTools: ToolDefinition[] = [
     }, 'indicator_abands'),
   },
   {
-    name: 'indicator_atr', description: '平均真实范围 (ATR)', schema: ATRInput,
+    name: 'indicator_atr', description: '平均真实范围 (ATR)。需要至少 interval 个数据点', schema: ATRInput,
     handler: wrapHandler((args: { candles: { high: number; low: number; close: number }[]; interval: number; smoothingType?: string }) => {
       const i = new ATR(args.interval, (ctors[args.smoothingType || 'EMA'] || EMA) as any);
       for (const c of args.candles) (i as unknown as { add(v: { high: number; low: number; close: number }): number | null }).add(c);
@@ -35,7 +35,7 @@ export const volatilityTools: ToolDefinition[] = [
     }, 'indicator_atr'),
   },
   {
-    name: 'indicator_bbands', description: '布林带 (Bollinger Bands)', schema: BBandsInput,
+    name: 'indicator_bbands', description: '布林带 (Bollinger Bands)。需要至少 interval+1 个数据点才能计算标准差', schema: BBandsInput,
     handler: wrapHandler((args: { values: number[]; interval: number; deviationMultiplier: number }) => {
       const i = new BollingerBands(args.interval, args.deviationMultiplier);
       let last: { lower: number; middle: number; upper: number } | null = null;
@@ -45,11 +45,11 @@ export const volatilityTools: ToolDefinition[] = [
     }, 'indicator_bbands'),
   },
   {
-    name: 'indicator_iqr', description: '四分位距 (IQR)', schema: IQRInput,
+    name: 'indicator_iqr', description: '四分位距 (IQR)。需要至少 interval 个数据点', schema: IQRInput,
     handler: wrapHandler((args: { values: number[]; interval: number }) => { const i = new IQR(args.interval); for (const v of args.values) i.add(v); return roundValue({ indicator: 'IQR', interval: args.interval, last: i.getResultOrThrow() }); }, 'indicator_iqr'),
   },
   {
-    name: 'indicator_zigzag', description: 'Zig Zag 指标', schema: ZigZagInput,
+    name: 'indicator_zigzag', description: 'Zig Zag 指标。需要至少 50 根 K 线才能检测到确认的转折点（不足会返回错误提示）', schema: ZigZagInput,
     handler: wrapHandler((args: { candles: { high: number; low: number }[]; deviation: number }) => {
       const i = new ZigZag({ deviation: args.deviation });
       let last: number | null = null;
