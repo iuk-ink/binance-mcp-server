@@ -81,8 +81,10 @@ export function handleBinanceError(error: unknown): never {
  * 对错误消息进行敏感信息脱敏处理
  *
  * @description
- * 将可能包含 API 密钥、签名等敏感信息的错误消息进行脱敏替换。
- * 确保这些信息不会出现在 MCP 返回的错误消息中。
+ * Binance API 错误消息中可能包含 API Key、Secret、Signature 等敏感凭证。
+ * 这些信息一旦通过 MCP 返回给 AI 助手，将暴露在 AI 平台日志中。
+ * 因此对所有返回给用户的错误消息做正则脱敏，确保安全。
+ *
  * 脱敏规则：
  * - `api_key` / `apikey` → `[API_KEY]`
  * - `secret` → `[SECRET]`

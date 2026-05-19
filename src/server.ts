@@ -27,7 +27,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createRequire } from 'node:module';
 
-// binance-api-node 是 CJS 模块，ESM 中使用 createRequire 加载
+// binance-api-node 仅发布 CJS 产物，ESM 项目通过 createRequire 桥接加载
 const requireBinance = createRequire(import.meta.url);
 const Binance = requireBinance('binance-api-node').default as (
   options?: Record<string, unknown>,
@@ -78,13 +78,6 @@ function registerAll(server: McpServer, tools: ToolDefinition[]): void {
  * 2. 创建 McpServer 实例
  * 3. 初始化 Binance 客户端（含期货端点配置）
  * 4. 执行条件工具注册
- *
- * 首次跨越大版本迁移变更（对比旧版 .trae/binance-mcp-server）：
- * - MCP SDK v0.4 → v1.29: 从手动 ListTools/CallTool handler 迁移到 registerTool()
- * - Schema 定义: 从手写 JSON Schema + Zod 双重定义迁移到仅 Zod 自动生成
- * - 工具注册: 从 Map<string, any> 迁移到泛型 ToolDefinition 数组
- * - 配置范围: 切换为纯期货 REST 端点
- * - 功能域: 期货公开+认证 (30) + 技术指标 (46) = 76 个工具
  *
  * @returns 配置完成的 McpServer 实例
  */

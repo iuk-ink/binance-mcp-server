@@ -10,10 +10,18 @@
 
 import { z } from 'zod';
 
-/** 杠杆倍数参数，1-125 整数 */
+/**
+ * 杠杆倍数参数
+ *
+ * 取值范围 1-125，对应 Binance 期货的最大杠杆上限
+ */
 const LeverageParam = z.number().min(1).max(125).describe('目标杠杆倍数 1-125');
 
-/** 通用可选时间范围 */
+/**
+ * 通用可选时间范围
+ *
+ * 被多个 Schema 通过展开语法复用
+ */
 const TimeRange = {
   startTime: z.number().optional().describe('起始时间戳(ms)'),
   endTime: z.number().optional().describe('结束时间戳(ms)'),

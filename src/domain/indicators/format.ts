@@ -20,6 +20,7 @@
  */
 export function roundValue(v: unknown): unknown {
   if (typeof v === 'number') {
+    // toFixed(8) 输出字符串，+ 号转回 number 同时自动去掉末尾多余的 0
     return +v.toFixed(8);
   }
   if (Array.isArray(v)) {

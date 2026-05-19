@@ -42,6 +42,18 @@ import {
 } from './schemas.js';
 import type { ToolDefinition, BinanceClient } from '../../types/common.js';
 
+/**
+ * 创建期货认证工具列表
+ *
+ * @description
+ * 将 Binance 客户端的认证期货 REST 方法封装为 19 个 MCP 工具。
+ * 仅在配置了 BINANCE_API_KEY + BINANCE_API_SECRET 时被调用和注册。
+ *
+ * 工具覆盖：账户查询(3) + 杠杆与保证金(4) + 杠杆分层(1) + 下单改单(6) + 取消活跃(3) + 辅助(2)
+ *
+ * @param client - Binance API 客户端实例（动态类型）
+ * @returns 19 个认证期货 MCP 工具定义
+ */
 export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition[] {
   const c = client as BinanceClient;
 
@@ -358,7 +370,13 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
       },
     },
 
-    /** 查询活跃订单（含条件单并行查询） */
+    /** 查询活跃订单（含条件单并行查询）
+     *
+     * 技术细节：
+     * - Binance 将普通订单和条件单（STOP/TAKE_PROFIT/TRAILING）分为两个独立端点
+     * - 此处并行查询两者并合并返回，避免调用方分别调用
+     * - algoOrders 结果同时包含止损/止盈/追踪止损等条件单
+     */
     {
       name: 'futures_open_orders',
       description: '查询期货当前活跃订单（含止损/止盈/追踪等条件单）',
@@ -382,7 +400,14 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
 
     // ==================== 辅助工具 ====================
 
-    /** 账户全景报告 — 默认紧凑模式：只返回持仓+活跃订单（去重省 token），compact=false 可恢复全量 */
+    /** 账户全景报告 — 默认紧凑模式：只返回持仓+活跃订单（去重省 token），compact=false 可恢复全量
+     *
+     * 设计说明：
+     * - compact=true（默认）：仅调 positions + openOrders，跳过 balances/accountInfo
+     *   （balances 含在 positions 的 margin 字段内，accountInfo 与 positions 重复）
+     * - 零持仓过滤：默认 hideZeroPositions=true，过滤 positionAmt===0 的历史残留
+     * - filteredOut 字段指示被过滤的零持仓数量
+     */
     {
       name: 'futures_account_report',
       description: '获取期货账户全景报告。默认紧凑模式（compact=true）：只返回持仓+活跃订单，省 token。传 compact=false 可恢复全量（含 balances+accountInfo）',

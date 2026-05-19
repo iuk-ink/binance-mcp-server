@@ -16,9 +16,17 @@ import { createFuturesPublicTools } from '../src/domain/futures/public.js';
 import { createFuturesAuthenticatedTools } from '../src/domain/futures/authenticated.js';
 import { logger } from '../src/utils/logger.js';
 
+/** 通过计数 */
 let passed = 0;
+/** 失败计数 */
 let failed = 0;
 
+/**
+ * 断言语义封装，统计通过/失败数量
+ *
+ * @param condition - 断言条件
+ * @param message - 失败时输出的描述
+ */
 function assert(condition: boolean, message: string): void {
   if (condition) {
     passed++;
@@ -29,6 +37,11 @@ function assert(condition: boolean, message: string): void {
   }
 }
 
+/**
+ * 冒烟测试主流程
+ *
+ * 依次执行 6 大测试项：指标创建 → 公开工具 → 认证工具 → handler 执行 → 错误处理 → McpServer 创建
+ */
 async function main(): Promise<void> {
   console.error('\n========== Binance MCP Server 冒烟测试 ==========\n');
 

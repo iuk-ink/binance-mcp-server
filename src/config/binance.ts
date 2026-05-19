@@ -54,8 +54,7 @@ export interface BinanceConfig {
  * - testnet=true: 使用测试网端点（https://testnet.binancefuture.com）
  * - testnet=false: 使用主网端点（https://fapi.binance.com）
  *
- * 跨越大版本迁移变更：HTTP_FUTURES_BASE 对应
- * binance-api-node Init 参数中的 httpFutures。
+ * 也可通过 HTTP_FUTURES_BASE 环境变量手动覆盖端点地址。
  *
  * @returns Binance 客户端配置对象
  */

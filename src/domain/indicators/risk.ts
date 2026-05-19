@@ -24,12 +24,23 @@ import {
   VaRInput,
 } from './schemas.js';
 
-/** 返回数组均值 */
+/**
+ * 计算数组算术平均值
+ *
+ * @param arr - 数值数组
+ * @returns 平均值
+ */
 function mean(arr: number[]): number {
   return arr.reduce((s, v) => s + v, 0) / arr.length;
 }
 
-/** 返回数组标准差（总体） */
+/**
+ * 计算数组总体标准差
+ *
+ * @param arr - 数值数组
+ * @param avg - 预计算的均值（可选，传入可减少一次遍历）
+ * @returns 总体标准差
+ */
 function stddev(arr: number[], avg?: number): number {
   const m = avg ?? mean(arr);
   return Math.sqrt(arr.reduce((s, v) => s + (v - m) ** 2, 0) / arr.length);

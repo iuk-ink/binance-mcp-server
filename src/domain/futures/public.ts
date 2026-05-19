@@ -31,6 +31,18 @@ import {
 } from './schemas.js';
 import type { ToolDefinition, BinanceClient } from '../../types/common.js';
 
+/**
+ * 创建期货公开工具列表
+ *
+ * @description
+ * 将 Binance 客户端暴露的公开期货 REST 方法封装为 11 个 MCP 工具。
+ * 这些工具不需要 API 认证，在 server.ts 中始终注册。
+ *
+ * 返回的数组元素为 ToolDefinition 类型，由 registerAll() 统一注册到 McpServer。
+ *
+ * @param client - Binance API 客户端实例（动态类型）
+ * @returns 11 个公开期货 MCP 工具定义
+ */
 export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
   const c = client as BinanceClient;
 
