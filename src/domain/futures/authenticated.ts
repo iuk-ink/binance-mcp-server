@@ -175,12 +175,16 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
     /** 杠杆分层 — 不同名义仓位对应的最大杠杆 */
     {
       name: 'futures_leverage_bracket',
-      description: '获取期货杠杆分层信息（不同仓位对应的最大杠杆）',
+      description: '获取期货杠杆分层信息（不同仓位对应的最大杠杆）。⚠️ 不传 symbol 返回全部交易对（数据量极大），强烈建议传 symbol',
       schema: FuturesLeverageBracketSchema,
       handler: async (args) => {
         const a = args as { symbol?: string };
         try {
           const r = await c.futuresLeverageBracket(a.symbol ? { symbol: a.symbol } : undefined);
+          const data = Array.isArray(r) ? r : [r];
+          if (!a.symbol && data.length > 50) {
+            return ok({ warning: `未指定 symbol，返回全量 ${data.length} 条，已截断至前 50 条。强烈建议传入 symbol 参数过滤`, brackets: data.slice(0, 50), total: data.length, timestamp: Date.now() });
+          }
           return ok({ brackets: r, timestamp: Date.now() });
         } catch (e) { logError(e as Error, { tool: 'futures_leverage_bracket' }); return ok({ error: true, message: (e as Error).message }); }
       },
@@ -218,7 +222,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
     /** 修改订单 — 仅 orderId + symbol 必填，其余按需传 */
     {
       name: 'futures_update_order',
-      description: '修改期货订单（修改价格/数量等。仅 orderId + symbol 必填，其余字段只传要改的）',
+      description: '修改期货订单（修改价格/数量等。建议传 side+type 避免 Binance 校验不通过，仅 orderId+symbol 必填）',
       schema: FuturesUpdateOrderSchema,
       handler: async (args) => {
         const a = args as Record<string, unknown>;
@@ -365,7 +369,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           const params = a.symbol ? { symbol: a.symbol } : undefined;
           // 并行查询普通单和条件单（Binance REST 分两个端点）
           const ordersPromise = withRetry(async () => c.futuresOpenOrders(params) as Promise<unknown[]>);
-          const algoFn = (c as BinanceClient).futuresOpenAlgoOrders;
+          const algoFn = (c as BinanceClient).futuresGetOpenAlgoOrders;
           const algoPromise: Promise<unknown[]> = algoFn
             ? (algoFn(params) as Promise<unknown[]>).catch(() => [])
             : Promise.resolve([]);
@@ -378,30 +382,47 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
 
     // ==================== 辅助工具 ====================
 
-    /** 账户全景报告 — 聚合余额、持仓、活跃订单、账户信息，默认过滤零持仓 */
+    /** 账户全景报告 — 默认紧凑模式：只返回持仓+活跃订单（去重省 token），compact=false 可恢复全量 */
     {
       name: 'futures_account_report',
-      description: '获取期货账户全景报告（余额+持仓+活跃订单+账户模式）。默认过滤零持仓，传 hideZeroPositions=false 可查看全部',
+      description: '获取期货账户全景报告。默认紧凑模式（compact=true）：只返回持仓+活跃订单，省 token。传 compact=false 可恢复全量（含 balances+accountInfo）',
       schema: FuturesAccountReportSchema,
       handler: async (args) => {
-        const a = args as { hideZeroPositions?: boolean };
+        const a = args as { hideZeroPositions?: boolean; compact?: boolean };
         try {
           const hideZero = a.hideZeroPositions !== false;
-          const [balances, positions, openOrders, accountInfo] = await Promise.all([
-            withRetry(async () => c.futuresAccountBalance() as Promise<unknown>),
+          const isCompact = a.compact !== false;
+          // compact 模式：只调 positions + openOrders（余额含在 positions 内，accountInfo 冗余）
+          const [positions, openOrders] = await Promise.all([
             withRetry(async () => (c as BinanceClient).futuresPositionRisk?.() as Promise<unknown> ?? Promise.resolve(null)),
             withRetry(async () => c.futuresOpenOrders() as Promise<unknown>),
-            withRetry(async () => (c as BinanceClient).futuresAccountInfo?.() as Promise<unknown> ?? Promise.resolve(null)),
           ]);
           const filteredPositions = hideZero && Array.isArray(positions)
             ? (positions as Array<{ positionAmt: string }>)
                 .filter(p => parseFloat(p.positionAmt) !== 0)
             : positions;
           const totalPositions = Array.isArray(positions) ? positions.length : 0;
-          const result: Record<string, unknown> = { balances, positions: filteredPositions, openOrders, accountInfo, timestamp: Date.now() };
+          const result: Record<string, unknown> = { positions: filteredPositions, openOrders, timestamp: Date.now() };
           if (hideZero && totalPositions > (Array.isArray(filteredPositions) ? filteredPositions.length : 0)) {
             result.totalPositions = totalPositions;
             result.filteredOut = totalPositions - (Array.isArray(filteredPositions) ? filteredPositions.length : 0);
+          }
+          if (!isCompact) {
+            const [balances, accountInfo] = await Promise.all([
+              withRetry(async () => c.futuresAccountBalance() as Promise<unknown>),
+              withRetry(async () => (c as BinanceClient).futuresAccountInfo?.() as Promise<unknown> ?? Promise.resolve(null)),
+            ]);
+            const filteredAccountInfo = hideZero && accountInfo && typeof accountInfo === 'object'
+              ? {
+                  ...(accountInfo as Record<string, unknown>),
+                  positions: Array.isArray((accountInfo as Record<string, unknown>).positions)
+                    ? ((accountInfo as Record<string, unknown>).positions as Array<{ positionAmt: string }>)
+                        .filter(p => parseFloat(p.positionAmt) !== 0)
+                    : (accountInfo as Record<string, unknown>).positions,
+                }
+              : accountInfo;
+            result.balances = balances;
+            result.accountInfo = filteredAccountInfo;
           }
           return ok(result);
         } catch (e) { logError(e as Error, { tool: 'futures_account_report' }); return ok({ error: true, message: (e as Error).message }); }
@@ -432,9 +453,14 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
             side: a.side,
             type: orderType,
             stopPrice: triggerPrice,
-            closePosition: a.quantity === undefined || a.quantity === '' ? true : undefined,
-            quantity: a.quantity || undefined,
           };
+          // Binance 要求 STOP_MARKET/TAKE_PROFIT_MARKET 必须显式传 closePosition，
+          // 不能靠 undefined 占位（会被 JSON.stringify 丢弃）
+          if (a.quantity && a.quantity !== '') {
+            params.quantity = a.quantity;
+          } else {
+            params.closePosition = true;
+          }
           if (a.positionSide) params.positionSide = a.positionSide;
           const r = await c.futuresOrder(params);
           return ok({ type: a.orderType, orderType, triggerPrice, order: r, timestamp: Date.now() });

@@ -96,13 +96,13 @@ export const FuturesOrderSchema = z.object({
   closePosition: z.boolean().optional().describe('全仓平仓（仅 STOP_MARKET/TAKE_PROFIT_MARKET 支持，不支持 MARKET/LIMIT/TRAILING_STOP_MARKET）'),
 });
 
-/** 修改期货订单 — 仅 orderId + symbol 必填，其余按需传 */
+/** 修改期货订单 — 仅 orderId + symbol 必填，但提示中建议传 side/type 避免出错 */
 export const FuturesUpdateOrderSchema = z.object({
   orderId: z.number().describe('订单ID'),
   symbol: z.string().describe('交易对符号'),
-  side: z.enum(['BUY', 'SELL']).optional().describe('买卖方向（只改价格时可不传）'),
+  side: z.enum(['BUY', 'SELL']).optional().describe('买卖方向。建议修改订单时一并传入，避免 Binance 端校验不通过'),
   positionSide: z.enum(['LONG', 'SHORT']).optional().describe('持仓方向，双向持仓模式必填'),
-  type: z.enum(['LIMIT', 'MARKET', 'STOP', 'STOP_MARKET', 'TAKE_PROFIT', 'TAKE_PROFIT_MARKET', 'TRAILING_STOP_MARKET']).optional().describe('订单类型（只改价格时可不传）'),
+  type: z.enum(['LIMIT', 'MARKET', 'STOP', 'STOP_MARKET', 'TAKE_PROFIT', 'TAKE_PROFIT_MARKET', 'TRAILING_STOP_MARKET']).optional().describe('订单类型。建议修改订单时一并传入，避免 Binance 端校验不通过'),
   quantity: z.string().optional().describe('数量（只改价格时可不传）'),
   price: z.string().optional().describe('价格'),
 });
@@ -167,10 +167,12 @@ export const FuturesOpenOrdersSchema = z.object({
 
 // ---- 辅助工具 ----
 
-/** 账户持仓全景报告 — 默认过滤零持仓，可传 hideZeroPositions=false 恢复全量 */
+/** 账户持仓全景报告 — 默认紧凑模式（去重）并过滤零持仓 */
 export const FuturesAccountReportSchema = z.object({
   hideZeroPositions: z.boolean().optional().default(true)
     .describe('是否过滤零持仓，默认 true。设为 false 可查看历史全部持仓'),
+  compact: z.boolean().optional().default(true)
+    .describe('精简模式（默认）。true=去重返回（省 token），false=完整返回 balances+accountInfo 全部字段'),
 });
 
 /** 一键止损/止盈 — 根据当前价格和百分比偏移自动计算触发价并下条件单 */
