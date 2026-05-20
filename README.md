@@ -49,17 +49,17 @@ npm run dev   # 或：npm run build && npm start
 | | `futures_margin_type` | 逐仓/全仓切换 |
 | | `futures_position_margin` | 逐仓保证金调增/调减 |
 | | `futures_margin_history` | 保证金变更记录 |
-| 📊 杠杆分层 | `futures_leverage_bracket` | 名义仓位杠杆阶梯 |
+| 📊 杠杆分层 | `futures_leverage_bracket` | 名义仓位杠杆阶梯（⚠️建议传symbol） |
 | 📝 下单与改单 | `futures_order` | 下单（7 种类型） |
-| | `futures_update_order` | 修改订单 |
+| | `futures_update_order` | 修改订单（建议传 side+type） |
 | | `futures_get_order` | 查单 |
 | | `futures_all_orders` | 全量订单（含历史） |
 | | `futures_batch_orders` | 批量下单（≤5） |
 | | `futures_cancel_batch_orders` | 批量取消 |
 | ❌ 取消与活跃 | `futures_cancel_order` | 单笔取消（支持条件单 algoId） |
 | | `futures_cancel_all_open_orders` | 一键清仓（需确认） |
-| | `futures_open_orders` | 当前活跃订单 |
-| 🛠️ 辅助工具 | `futures_account_report` | 账户全景报告（余额+持仓+订单） |
+| | `futures_open_orders` | 当前活跃订单（含条件单） |
+| 🛠️ 辅助工具 | `futures_account_report` | 账户全景报告（紧凑/完整可配） |
 | | `futures_quick_order` | 一键止损/止盈（百分比自动算价） |
 
 #### 下单类型速查表
@@ -157,11 +157,14 @@ src/
 ├── index.ts              ← 入口
 ├── server.ts             ← McpServer 创建 + 条件注册
 ├── config/binance.ts     ← 配置（端点 / 代理 / 认证）
-├── types/common.ts       ← ToolDefinition 泛型
-├── utils/                ← 日志 / 校验 / 错误脱敏
+├── types/common.ts       ← ToolDefinition 泛型 + BinanceClient 类型
+├── utils/                ← 响应工厂 / 日志 / 校验 / 脱敏 / 限流
 └── domain/
     ├── futures/          ← 期货：公开(11) + 认证(19)
-    │   ├── schemas.ts    ← Zod Schema
+    │   ├── schemas.ts    ← Zod Schema（聚合导出）
+    │   ├── schemas/
+    │   │   ├── public.ts     ← 公开 Schema (10)
+    │   │   └── authenticated.ts ← 认证 Schema (18)
     │   ├── public.ts     ← 公开 handler
     │   ├── authenticated.ts ← 认证 handler
     │   └── index.ts
@@ -185,7 +188,7 @@ src/
 | `npm start` | 运行编译产物 |
 | `npm run typecheck` | 类型检查 |
 | `npm run watch` | 热重载 |
-| `npx tsx test/smoke-test.ts` | 冒烟测试（31 项） |
+| `npx tsx test/smoke-test.ts` | 冒烟测试（30 项） |
 
 ## 技术栈
 
@@ -202,6 +205,8 @@ src/
 
 - 密钥仅从环境变量注入，不写入代码或日志
 - 错误消息自动脱敏（`api_key` → `[API_KEY]`、`signature` → `[SIGNATURE]`）
+- `STOP_MARKET` / `TAKE_PROFIT_MARKET` 自动显式传 `closePosition`（避免 `undefined` 被 JSON 丢弃）
+- Hedge 模式下 `SELL+LONG` 自动设 `reduceOnly=true`，防止误开反向仓位
 - 建议始终在 `BINANCE_TESTNET=true` 模式下测试交易功能
 - 生产环境设 `LOG_LEVEL=error`
 

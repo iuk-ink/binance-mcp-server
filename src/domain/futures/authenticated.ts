@@ -352,7 +352,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
     /** 取消某交易对所有活跃订单（含条件单）— 危险操作需传 confirm="CONFIRM" */
     {
       name: 'futures_cancel_all_open_orders',
-      description: '取消指定交易对所有活跃订单。此操作不可撤销，必须传 confirm="CONFIRM" 确认',
+      description: '取消指定交易对所有活跃订单（含条件单）。此操作不可撤销，必须传 confirm="CONFIRM" 确认',
       schema: FuturesCancelAllOpenOrdersSchema,
       handler: async (args) => {
         const a = args as { symbol: string; confirm: string };
@@ -361,11 +361,21 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
           if (a.confirm !== 'CONFIRM') {
             return ok({ error: true, message: '危险操作：必须传入 confirm="CONFIRM" 以确认执行一键清仓' });
           }
-          // 取消前先查询活跃订单，返回被取消的订单 ID 供用户确认
-          const beforeOpen = await c.futuresOpenOrders({ symbol: a.symbol }) as Array<{ orderId: number }>;
-          const cancelledIds = beforeOpen.map((o) => o.orderId);
-          await c.futuresCancelAllOpenOrders({ symbol: a.symbol });
-          return ok({ symbol: a.symbol, cancelledCount: cancelledIds.length, cancelledOrderIds: cancelledIds, timestamp: Date.now() });
+          // 取消前先查询活跃订单和条件单，返回被取消的订单 ID 供用户确认
+          const algoFn = (c as BinanceClient).futuresGetOpenAlgoOrders;
+          const [beforeOpen, algoOrders] = await Promise.all([
+            c.futuresOpenOrders({ symbol: a.symbol }) as Promise<Array<{ orderId: number }>>,
+            algoFn ? (algoFn({ symbol: a.symbol }) as Promise<Array<{ algoId: number }>>).catch(() => []) : Promise.resolve([]),
+          ]);
+          const regularIds = beforeOpen.map((o) => o.orderId);
+          const algoIds = (algoOrders || []).map((o: { algoId: number }) => o.algoId);
+          // 并行取消普通订单和条件单
+          const cancelAlgoFn = (c as BinanceClient).futuresCancelAllAlgoOpenOrders as ((payload: { symbol: string }) => Promise<unknown>) | undefined;
+          await Promise.all([
+            c.futuresCancelAllOpenOrders({ symbol: a.symbol }),
+            cancelAlgoFn ? cancelAlgoFn({ symbol: a.symbol }).catch(() => null) : Promise.resolve(null),
+          ]);
+          return ok({ symbol: a.symbol, cancelledRegularCount: regularIds.length, cancelledRegularIds: regularIds, cancelledAlgoCount: algoIds.length, cancelledAlgoIds: algoIds, timestamp: Date.now() });
         } catch (e) { logError(e as Error, { tool: 'futures_cancel_all_open_orders' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },

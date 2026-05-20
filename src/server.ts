@@ -137,5 +137,5 @@ export async function startServer(): Promise<void> {
   const server = await createServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  logger.info('Binance MCP Server v2.0.1 已启动');
+  logger.info('Binance MCP Server v2.0.2 已启动');
 }

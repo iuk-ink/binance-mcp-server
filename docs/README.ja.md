@@ -49,17 +49,17 @@ npm run dev   # または: npm run build && npm start
 | | `futures_margin_type` | ISOLATED / CROSSED 切替 |
 | | `futures_position_margin` | 逐次証拠金の増減 |
 | | `futures_margin_history` | 証拠金変更履歴 |
-| 📊 レバレッジ階層 | `futures_leverage_bracket` | 想定元本レバレッジ段階表 |
+| 📊 レバレッジ階層 | `futures_leverage_bracket` | 想定元本レバレッジ段階表（⚠️symbol指定推奨） |
 | 📝 注文 | `futures_order` | 注文（7 種類） |
-| | `futures_update_order` | 注文修正 |
+| | `futures_update_order` | 注文修正（side+type の指定推奨） |
 | | `futures_get_order` | 単一注文照会 |
 | | `futures_all_orders` | 全注文（履歴含む） |
 | | `futures_batch_orders` | 一括注文（≤5） |
 | | `futures_cancel_batch_orders` | 一括取消 |
 | ❌ 取消とアクティブ | `futures_cancel_order` | 単一取消（条件付き注文の algoId 対応） |
 | | `futures_cancel_all_open_orders` | 全建玉取消（確認必要） |
-| | `futures_open_orders` | 現在の有効注文一覧 |
-| 🛠️ ユーティリティ | `futures_account_report` | 口座全体レポート（残高+ポジション+注文） |
+| | `futures_open_orders` | 現在の有効注文一覧（条件付き注文含む） |
+| 🛠️ ユーティリティ | `futures_account_report` | 口座全体レポート（コンパクト/フル設定可） |
 | | `futures_quick_order` | ワンクリック損切り/利確（％ずらしで自動計算） |
 
 #### 注文タイプ早見表
@@ -157,11 +157,14 @@ src/
 ├── index.ts              ← エントリポイント
 ├── server.ts             ← McpServer 作成 + 条件付き登録
 ├── config/binance.ts     ← 設定（エンドポイント / プロキシ / 認証）
-├── types/common.ts       ← ToolDefinition ジェネリック型
-├── utils/                ← ロガー / バリデーション / エラーサニタイズ / レート制限
+├── types/common.ts       ← ToolDefinition + BinanceClient 型
+├── utils/                ← レスポンスファクトリ / ロガー / バリデーション / サニタイズ / レート制限
 └── domain/
     ├── futures/          ← 先物: パブリック (11) + 認証 (19)
-    │   ├── schemas.ts    ← Zod スキーマ
+    │   ├── schemas.ts    ← Zod スキーマ（集約エクスポート）
+    │   ├── schemas/
+    │   │   ├── public.ts     ← パブリックスキーマ (10)
+    │   │   └── authenticated.ts ← 認証スキーマ (18)
     │   ├── public.ts     ← パブリックハンドラ
     │   ├── authenticated.ts ← 認証ハンドラ
     │   └── index.ts
@@ -185,7 +188,7 @@ src/
 | `npm start` | コンパイル済み実行 |
 | `npm run typecheck` | 型チェック |
 | `npm run watch` | ホットリロード |
-| `npx tsx test/smoke-test.ts` | スモークテスト（31 項目） |
+| `npx tsx test/smoke-test.ts` | スモークテスト（30 項目） |
 
 ## 技術スタック
 
@@ -202,6 +205,8 @@ src/
 
 - キーは環境変数のみから注入、コードやログに書き込まれません
 - エラーメッセージは自動サニタイズ（`api_key` → `[API_KEY]`、`signature` → `[SIGNATURE]`）
+- `STOP_MARKET` / `TAKE_PROFIT_MARKET` は `closePosition` を明示的に送信（`undefined` が JSON から削除されるのを防止）
+- Hedge モードでは `SELL+LONG` で自動 `reduceOnly=true`、誤反対ポジションを防止
 - 取引機能は必ず `BINANCE_TESTNET=true` でテストしてください
 - 本番環境では `LOG_LEVEL=error` を推奨
 

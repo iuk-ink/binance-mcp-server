@@ -85,7 +85,7 @@ export function createFuturesPublicTools(client: unknown): ToolDefinition[] {
             const info = symbols.find((s) => s.symbol === a.symbol);
             return ok({ symbol: a.symbol, info: info || null, timestamp: Date.now() });
           }
-          return ok(r);
+          return ok({ ...(r as object), timestamp: Date.now() });
         } catch (e) { logError(e as Error, { tool: 'futures_exchange_info' }); return ok({ error: true, message: (e as Error).message }); }
       },
     },

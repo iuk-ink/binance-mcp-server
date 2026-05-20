@@ -49,17 +49,17 @@ npm run dev   # or: npm run build && npm start
 | | `futures_margin_type` | Switch ISOLATED / CROSSED |
 | | `futures_position_margin` | Add/reduce isolated margin |
 | | `futures_margin_history` | Margin change records |
-| 📊 Leverage Bracket | `futures_leverage_bracket` | Notional leverage tier table |
+| 📊 Leverage Bracket | `futures_leverage_bracket` | Notional leverage tier table (⚠️ pass symbol recommended) |
 | 📝 Orders | `futures_order` | Place order (7 types) |
-| | `futures_update_order` | Modify order |
+| | `futures_update_order` | Modify order (pass side+type recommended) |
 | | `futures_get_order` | Query single order |
 | | `futures_all_orders` | All orders (including history) |
 | | `futures_batch_orders` | Batch orders (≤5) |
 | | `futures_cancel_batch_orders` | Batch cancel |
 | ❌ Cancel & Active | `futures_cancel_order` | Cancel single (supports algoId) |
 | | `futures_cancel_all_open_orders` | Cancel all open orders (requires confirmation) |
-| | `futures_open_orders` | Current open orders |
-| 🛠️ Utilities | `futures_account_report` | Account overview (balance + positions + orders) |
+| | `futures_open_orders` | Current open orders (incl. conditional orders) |
+| 🛠️ Utilities | `futures_account_report` | Account overview (compact/full configurable) |
 | | `futures_quick_order` | One-click stop loss / take profit (auto-calculates trigger price) |
 
 #### Order Type Cheat Sheet
@@ -157,11 +157,14 @@ src/
 ├── index.ts              ← Entry point
 ├── server.ts             ← McpServer creation + conditional registration
 ├── config/binance.ts     ← Config (endpoint / proxy / auth)
-├── types/common.ts       ← ToolDefinition generic
-├── utils/                ← Logger / validation / error sanitization / rate limiter
+├── types/common.ts       ← ToolDefinition + BinanceClient types
+├── utils/                ← Response factory / logger / validation / sanitization / rate limiter
 └── domain/
     ├── futures/          ← Futures: public (11) + authenticated (19)
-    │   ├── schemas.ts    ← Zod Schema
+    │   ├── schemas.ts    ← Zod Schema (aggregated export)
+    │   ├── schemas/
+    │   │   ├── public.ts     ← Public schemas (10)
+    │   │   └── authenticated.ts ← Auth schemas (18)
     │   ├── public.ts     ← Public handlers
     │   ├── authenticated.ts ← Auth handlers
     │   └── index.ts
@@ -185,7 +188,7 @@ src/
 | `npm start` | Run compiled output |
 | `npm run typecheck` | Type checking |
 | `npm run watch` | Hot reload |
-| `npx tsx test/smoke-test.ts` | Smoke test (31 items) |
+| `npx tsx test/smoke-test.ts` | Smoke test (30 items) |
 
 ## Tech Stack
 
@@ -202,6 +205,8 @@ src/
 
 - Keys injected via environment variables only, never in code or logs
 - Error messages auto-sanitized (`api_key` → `[API_KEY]`, `signature` → `[SIGNATURE]`)
+- `STOP_MARKET` / `TAKE_PROFIT_MARKET` auto-send `closePosition` explicitly (prevents `undefined` from being dropped by JSON)
+- Hedge mode `SELL+LONG` auto-sets `reduceOnly=true` to prevent accidental reverse positions
 - Always test trading features with `BINANCE_TESTNET=true`
 - Set `LOG_LEVEL=error` in production
 

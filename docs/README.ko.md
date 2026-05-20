@@ -49,17 +49,17 @@ npm run dev   # 또는: npm run build && npm start
 | | `futures_margin_type` | ISOLATED / CROSSED 전환 |
 | | `futures_position_margin` | 격리 증거금 증감 |
 | | `futures_margin_history` | 증거금 변동 기록 |
-| 📊 레버리지 구간 | `futures_leverage_bracket` | 명목 포지션 레버리지 구간표 |
+| 📊 레버리지 구간 | `futures_leverage_bracket` | 명목 포지션 레버리지 구간표（⚠️symbol 지정 권장） |
 | 📝 주문 | `futures_order` | 주문（7 종류） |
-| | `futures_update_order` | 주문 수정 |
+| | `futures_update_order` | 주문 수정（side+type 지정 권장） |
 | | `futures_get_order` | 단일 주문 조회 |
 | | `futures_all_orders` | 전체 주문（이력 포함） |
 | | `futures_batch_orders` | 일괄 주문（≤5） |
 | | `futures_cancel_batch_orders` | 일괄 취소 |
 | ❌ 취소 및 활성 | `futures_cancel_order` | 단일 취소（조건부 주문 algoId 지원） |
 | | `futures_cancel_all_open_orders` | 전체 미체결 주문 취소（확인 필요） |
-| | `futures_open_orders` | 현재 활성 주문 |
-| 🛠️ 유틸리티 | `futures_account_report` | 계좌 전체 리포트（잔고+포지션+주문） |
+| | `futures_open_orders` | 현재 활성 주문（조건부 주문 포함） |
+| 🛠️ 유틸리티 | `futures_account_report` | 계좌 전체 리포트（컴팩트/풀 설정 가능） |
 | | `futures_quick_order` | 원클릭 손절/익절（% 오프셋 자동 계산） |
 
 #### 주문 유형 요약
@@ -157,11 +157,14 @@ src/
 ├── index.ts              ← 진입점
 ├── server.ts             ← McpServer 생성 + 조건부 등록
 ├── config/binance.ts     ← 설정（엔드포인트 / 프록시 / 인증）
-├── types/common.ts       ← ToolDefinition 제네릭
-├── utils/                ← 로거 / 검증 / 오류 무결화 / 속도 제한
+├── types/common.ts       ← ToolDefinition + BinanceClient 타입
+├── utils/                ← 응답 팩토리 / 로거 / 검증 / 무결화 / 속도 제한
 └── domain/
     ├── futures/          ← 선물: 공개 (11) + 인증 (19)
-    │   ├── schemas.ts    ← Zod 스키마
+    │   ├── schemas.ts    ← Zod 스키마（집계 익스포트）
+    │   ├── schemas/
+    │   │   ├── public.ts     ← 공개 스키마 (10)
+    │   │   └── authenticated.ts ← 인증 스키마 (18)
     │   ├── public.ts     ← 공개 핸들러
     │   ├── authenticated.ts ← 인증 핸들러
     │   └── index.ts
@@ -185,7 +188,7 @@ src/
 | `npm start` | 컴파일된 결과 실행 |
 | `npm run typecheck` | 타입 체크 |
 | `npm run watch` | 핫 리로드 |
-| `npx tsx test/smoke-test.ts` | 스모크 테스트（31 항목） |
+| `npx tsx test/smoke-test.ts` | 스모크 테스트（30 항목） |
 
 ## 기술 스택
 
@@ -202,6 +205,8 @@ src/
 
 - 키는 환경 변수로만 주입, 코드나 로그에 기록되지 않음
 - 오류 메시지 자동 무결화（`api_key` → `[API_KEY]`, `signature` → `[SIGNATURE]`）
+- `STOP_MARKET` / `TAKE_PROFIT_MARKET` 에서 `closePosition` 명시적 전송（`undefined` 가 JSON 에서 제거되는 현상 방지）
+- Hedge 모드에서 `SELL+LONG` 자동 `reduceOnly=true`, 실수로 반대 포지션 방지
 - 거래 기능은 반드시 `BINANCE_TESTNET=true` 환경에서 먼저 테스트하세요
 - 프로덕션 환경에서는 `LOG_LEVEL=error` 권장
 
