@@ -497,7 +497,7 @@ export function createFuturesAuthenticatedTools(client: unknown): ToolDefinition
             params.closePosition = true;
           }
           if (a.positionSide) params.positionSide = a.positionSide;
-          const r = await c.futuresOrder(params);
+          const r = await withRetry(async () => c.futuresOrder(params));
           return ok({ type: a.orderType, orderType, triggerPrice, order: r, timestamp: Date.now() });
         } catch (e) { logError(e as Error, { tool: 'futures_quick_order' }); return ok({ error: true, message: (e as Error).message }); }
       },
