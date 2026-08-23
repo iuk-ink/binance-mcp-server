@@ -1,0 +1,62 @@
+{
+  "name": "@iuk-ink/binance-mcp-server",
+  "version": "3.0.0",
+  "description": "Binance USDS-M Futures MCP server: 61 tools across market / indicator / analysis / trading domains, built on MCP server v2 + official Binance SDK",
+  "type": "module",
+  "bin": {
+    "binance-mcp-server": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.scripts.json",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "test": "node --import tsx --test \"src/**/__tests__/*.test.ts\"",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "keywords": [
+    "binance",
+    "mcp",
+    "model-context-protocol",
+    "futures",
+    "binance-futures",
+    "trading",
+    "technical-indicators"
+  ],
+  "author": {
+    "name": "iuk-ink"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iuk-ink/binance-mcp-server.git"
+  },
+  "homepage": "https://github.com/iuk-ink/binance-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/iuk-ink/binance-mcp-server/issues"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@binance/derivatives-trading-usds-futures": "^38.0.1",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "dotenv": "^17.4.2",
+    "trading-signals": "^8.3.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  }
+}
