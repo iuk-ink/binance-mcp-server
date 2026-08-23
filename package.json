@@ -1,6 +1,6 @@
 {
   "name": "@iuk-ink/binance-mcp-server",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Binance USDS-M Futures MCP server: 61 tools across market / indicator / analysis / trading domains, built on MCP server v2 + official Binance SDK",
   "type": "module",
   "bin": {
@@ -38,8 +38,7 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE",
-    "CHANGELOG.md"
+    "LICENSE"
   ],
   "publishConfig": {
     "access": "public"

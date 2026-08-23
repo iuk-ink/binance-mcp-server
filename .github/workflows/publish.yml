@@ -1,6 +1,6 @@
 # npm 发布工作流（OIDC Trusted Publishers，免长期凭证）
 #
-# 发布纪律：版本号写入 package.json → 提交 → 打同名 tag（如 v3.0.0）→ 推送 tag 触发本工作流。
+# 发布纪律：版本号写入 package.json → 提交 → 打同名 tag（v 前缀 + 版本号）→ 推送 tag 触发本工作流。
 # 信任来源：npmjs.com 包设置中登记的 Trusted Publisher（仓库 + 本工作流文件名），
 # 与 GitHub OIDC 身份断言匹配后换取一次性短时发布令牌，全程不落盘任何 token / secret。
 name: Publish Package

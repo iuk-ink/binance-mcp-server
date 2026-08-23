@@ -13,14 +13,30 @@
 
 import {
   DERIVATIVES_TRADING_USDS_FUTURES_REST_API_DEMO_URL,
-  DERIVATIVES_TRADING_USDS_FUTURES_REST_API_PROD_URL,
   DERIVATIVES_TRADING_USDS_FUTURES_REST_API_TESTNET_URL,
+  DERIVATIVES_TRADING_USDS_FUTURES_REST_API_PROD_URL,
 } from "@binance/derivatives-trading-usds-futures";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ZodType } from "zod/v4";
 import { LOG_LEVEL_VALUES } from "../utils/logger.js";
 import { envBool, envEnum, envInt, envStr, redact } from "./env.js";
 import { binanceConfigSchema } from "./schema.js";
 import type { BinanceConfig, ProxyConfig, ToolDomain } from "./schema.js";
+
+/**
+ * 运行时读取 package.json 版本号
+ *
+ * src 与 dist 下模块到包根的相对层级一致（config/ 上两级均为包根），
+ * 两处路径都命中 package.json；版本号单一事实来源收敛到 package.json，
+ * 升版时无需再同步代码内硬编码。
+ */
+const packageVersion = (
+  JSON.parse(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../package.json"), "utf8"),
+  ) as { version?: string }
+).version ?? "0.0.0";
 
 // ============================================================================
 //  内部：zod 校验 + 错误格式化
@@ -184,7 +200,7 @@ export function loadConfig(): Readonly<BinanceConfig> {
       testnet,
       demoTrading,
       serverName: envStr("MCP_SERVER_NAME", "binance-mcp-server"),
-      serverVersion: envStr("MCP_SERVER_VERSION", "3.0.0"),
+      serverVersion: envStr("MCP_SERVER_VERSION", packageVersion),
       logLevel: envEnum("LOG_LEVEL", LOG_LEVEL_VALUES, "info"),
       enabledToolDomains: parseToolDomains(envStr("MCP_TOOL_DOMAINS", "")),
     },

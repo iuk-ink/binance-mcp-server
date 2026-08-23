@@ -1,6 +1,6 @@
 # Binance MCP Server
 
-[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](https://www.npmjs.com/package/@iuk-ink/binance-mcp-server)
+[![Version](https://img.shields.io/npm/v/@iuk-ink/binance-mcp-server.svg)](https://www.npmjs.com/package/@iuk-ink/binance-mcp-server)
 [![Node.js](https://img.shields.io/badge/node.js-%3E%3D20-green.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
