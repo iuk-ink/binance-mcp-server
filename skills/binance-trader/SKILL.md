@@ -1,11 +1,36 @@
 ---
 name: binance-trader
-description: 币安 U 本位期货 MCP（binance-mcp-server）使用手册。当用户需要加密货币行情分析、技术指标计算、风险量化评估或期货交易执行（下单/撤单/持仓管理/条件单）时使用。涵盖工具选择决策、跨工具工作流、交易安全纪律与常见错误恢复剧本。
+description: 币安 U 本位期货 MCP（binance-mcp-server）使用手册。前置依赖：须先安装 @iuk-ink/binance-mcp-server MCP 服务器。当用户需要加密货币行情分析、技术指标计算、风险量化评估或期货交易执行（下单/撤单/持仓管理/条件单）时使用。涵盖安装自检、工具选择决策、跨工具工作流、交易安全纪律与常见错误恢复剧本。
 ---
 
 # Binance 期货交易指南
 
-面向 AI 助手的 binance-mcp-server 使用知识。只覆盖工具描述装不下的内容（工具选择、跨工具编排、安全纪律、错误恢复），参数约束与合法值一律以各工具自带描述为准，不在此复述。
+面向 AI 助手的 binance-mcp-server 使用知识。只覆盖工具描述装不下的内容（安装自检、工具选择、跨工具编排、安全纪律、错误恢复），参数约束与合法值一律以各工具自带描述为准，不在此复述。
+
+## 前置条件（先读）
+
+本手册涉及的全部工具来自 **binance-mcp-server** MCP 服务器（npm 包 `@iuk-ink/binance-mcp-server`）。只安装本 skill 而未接入该 MCP 时，任何工具调用都会失败——此时**不要**反复尝试工具或编造数据，应引导用户安装。
+
+**开始前自检**：首次为本用户服务时，先确认工具可用——调用一次 `market_ping`（最轻量只读探测）或查看可用工具列表是否包含 `market_*` 系列：
+
+- 探测成功 → 按后续章节正常工作
+- 工具不存在 → 停止一切工具调用，向用户说明需安装 MCP 服务器，并给出以下配置（加入 MCP 客户端的 `mcpServers` 配置后重启客户端）：
+
+```json
+{
+  "mcpServers": {
+    "binance": {
+      "command": "npx",
+      "args": ["-y", "@iuk-ink/binance-mcp-server"],
+      "env": {
+        "BINANCE_TESTNET": "true"
+      }
+    }
+  }
+}
+```
+
+需要交易功能时在 `env` 补充 `BINANCE_API_KEY` 与 `BINANCE_API_SECRET`；默认测试网（虚拟金）零资金风险。
 
 ## 环境认知
 
@@ -13,8 +38,9 @@ description: 币安 U 本位期货 MCP（binance-mcp-server）使用手册。当
 |---|---|
 | 默认连接测试网（虚拟金） | 未配置凭证即可全功能试用，交易操作零资金风险；切主网需 `BINANCE_TESTNET=false` + API 凭证 |
 | 情绪端点仅主网注册 | OI 历史 / 多空比 / 主动买卖量 / 大户持仓 4 个工具在测试网不存在，属正常裁剪而非故障 |
-| trading 域依赖凭证 | 无凭证时 21 个交易工具不注册，行情 / 指标 / 风险分析不受影响 |
+| trading 域依赖凭证 | 无凭证时 21 个交易工具不注册（调用报 unknown tool 属正常），行情 / 指标 / 风险分析不受影响 |
 | 指标返回条数 < limit 属正常 | 每个指标按自身预热需求跳过前若干根（如 limit=200 时 SMA(20) 返回 181 条），不是数据缺失 |
+| 个别工具域整体缺失 | 若 `market_*` 存在但某域全缺：trading 缺 = 未配凭证；多域缺 = 用户的 `MCP_TOOL_DOMAINS` 环境变量过滤了域，提示用户检查该配置 |
 
 ## 工具选择树
 
@@ -78,6 +104,7 @@ trading_positions → trading_account → （策略层面）analysis_drawdown / 
 
 | 症状 | 处置动作 |
 |---|---|
+| 工具不存在 / unknown tool | 先按「前置条件」自检分辨病因：全部工具缺失 = MCP 未安装（引导安装）；仅 trading 缺 = 未配凭证（正常）；多域缺失 = `MCP_TOOL_DOMAINS` 过滤。**严禁**在工具缺失时编造数据回应行情 / 交易类问题 |
 | `-2021` Order would immediately trigger | 触发价方向错误：先 `market_price` 取现价，按止损 / 止盈方向规则修正触发价（方向规则见 `trading_place_algo` 工具描述） |
 | `-4061` 持仓模式冲突 | `trading_position_mode` 查当前模式后修正参数：单向省略 positionSide，双向必传 LONG / SHORT |
 | 名义价值低于最小限制 | 数量 × 价格不足门槛（如 BTCUSDT 测试网约 50 USDT）：加大数量或调整价格后重试 |
