@@ -131,6 +131,10 @@ npx @iuk-ink/binance-mcp-server
 - 下单精度自动规整 + 最小名义价值前置校验
 - 参数校验全面对齐官方约束（clientOrderId 字符集、GTD 上界、追踪止损回撤率 0.1~10 等）
 
+## AI 使用指南（Skill）
+
+仓库内置 [`skills/binance-trader/SKILL.md`](skills/binance-trader/SKILL.md)——为 AI 助手编写的使用手册，涵盖工具选择决策、跨工具工作流、交易安全纪律与错误恢复剧本。支持 Skill 机制的客户端（Claude Code / Trae 等）可直接挂载，让 AI 从"能用工具"升级为"用好工具"。
+
 ## 本地开发
 
 ```bash
