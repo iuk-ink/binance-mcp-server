@@ -1,6 +1,6 @@
 {
   "name": "@iuk-ink/binance-mcp-server",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "description": "Binance USDS-M Futures MCP server: 61 tools across market / indicator / analysis / trading domains, built on MCP server v2 + official Binance SDK",
   "type": "module",
   "bin": {
@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.scripts.json",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
-    "test": "node --import tsx --test \"src/**/__tests__/*.test.ts\"",
+    "test": "node --import tsx --test --test-timeout=15000 \"src/**/__tests__/*.test.ts\"",
     "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "keywords": [
@@ -48,13 +48,15 @@
   },
   "dependencies": {
     "@binance/derivatives-trading-usds-futures": "^38.0.1",
+    "@modelcontextprotocol/node": "^2.0.0",
     "@modelcontextprotocol/server": "^2.0.0",
     "dotenv": "^17.4.2",
     "trading-signals": "^8.3.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^26.2.0",
+    "@modelcontextprotocol/client": "^2.0.0",
+    "@types/node": "^26.3.0",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2"
   }

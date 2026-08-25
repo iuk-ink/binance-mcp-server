@@ -39,6 +39,67 @@ export const proxySchema = z.object({
 });
 
 // ============================================================================
+//  Transport — 传输模式（stdio / Streamable HTTP）
+// ============================================================================
+
+/** 传输模式合法值 */
+export const TRANSPORT_MODE_VALUES = ["stdio", "http"] as const;
+
+/** localhost 系监听地址（仅本机绑定，不强制令牌认证）——判定逻辑私有，勿外部引用 */
+const LOCALHOST_BIND_HOSTS: readonly string[] = ["localhost", "127.0.0.1", "[::1]", "::1"];
+
+/** 通配绑定地址（监听全部网卡，须显式 Host 白名单）——判定逻辑私有，勿外部引用 */
+const WILDCARD_BIND_HOSTS: readonly string[] = ["0.0.0.0", "::", ""];
+
+/** HTTP 绑定地址是否属于 localhost 系（仅本机，无需强制令牌认证） */
+export function isLocalhostBind(host: string): boolean {
+  return LOCALHOST_BIND_HOSTS.includes(host.toLowerCase());
+}
+
+/** HTTP 绑定地址是否为通配绑定（监听全部网卡，须显式 Host 白名单） */
+export function isWildcardBind(host: string): boolean {
+  return WILDCARD_BIND_HOSTS.includes(host.toLowerCase());
+}
+
+/**
+ * 传输配置 schema
+ *
+ * 安全约束（superRefine，fail-fast）：
+ * - 非 localhost 系绑定必须设置 MCP_HTTP_TOKEN（HTTP 暴露 = 任何人可用服务端凭证交易）
+ * - 通配绑定必须显式设置 MCP_HTTP_ALLOWED_HOSTS（特定 IP / 主机名绑定缺省白名单 = [绑定地址]，
+ *   由 index.ts 组装时推导；通配绑定无法推导，必须人工声明）
+ */
+export const transportConfigSchema = z
+  .object({
+    mode: z.enum(TRANSPORT_MODE_VALUES),
+    http: z.object({
+      host: z.string().min(1),
+      port: z.number().int().min(1).max(65535),
+      allowedHosts: z.array(z.string().min(1)),
+      token: z.string(),
+    }),
+  })
+  .superRefine((value, ctx) => {
+    if (value.mode !== "http") return;
+    if (!isLocalhostBind(value.http.host) && value.http.token === "") {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "MCP_HTTP_HOST 绑定非本机地址时必须设置 MCP_HTTP_TOKEN（Bearer 令牌认证）",
+        path: ["http", "token"],
+      });
+    }
+    if (isWildcardBind(value.http.host) && value.http.allowedHosts.length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "MCP_HTTP_HOST 为通配绑定（0.0.0.0 / ::）时必须设置 MCP_HTTP_ALLOWED_HOSTS（Host 白名单，逗号分隔）",
+        path: ["http", "allowedHosts"],
+      });
+    }
+  });
+
+// ============================================================================
 //  Binance — 币安 USD-M 合约凭证、环境与客户端参数
 // ============================================================================
 
@@ -60,6 +121,7 @@ export const binanceConfigSchema = z
     enabledToolDomains: z
       .array(z.enum(TOOL_DOMAIN_VALUES))
       .default([...TOOL_DOMAIN_VALUES]),
+    transport: transportConfigSchema,
   })
   .superRefine((value, ctx) => {
     // testnet 与 demoTrading 互斥：同时启用会指向不同环境，造成混乱
@@ -88,3 +150,6 @@ export type BinanceConfig = z.infer<typeof binanceConfigSchema>;
 
 /** 代理配置类型 */
 export type ProxyConfig = z.infer<typeof proxySchema>;
+
+/** 传输配置类型 */
+export type TransportConfig = z.infer<typeof transportConfigSchema>;

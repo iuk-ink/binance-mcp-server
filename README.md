@@ -52,7 +52,78 @@ npx @iuk-ink/binance-mcp-server
 | `BINANCE_RECV_WINDOW` | 否 | `5000` | 签名时间窗（毫秒） |
 | `MCP_TOOL_DOMAINS` | 否 | 全部 | 工具域过滤，逗号分隔：`market,trading,indicator,analysis` |
 | `MCP_SERVER_NAME` | 否 | `binance-mcp-server` | MCP 服务名 |
+| `MCP_TRANSPORT` | 否 | `stdio` | 传输模式：`stdio`（本地）/ `http`（远程，见下节） |
+| `MCP_HTTP_HOST` | 否 | `127.0.0.1` | HTTP 模式监听地址（非本机绑定时强制要求令牌） |
+| `MCP_HTTP_PORT` | 否 | `3100` | HTTP 模式监听端口 |
+| `MCP_HTTP_TOKEN` | 否 | — | HTTP 模式 Bearer 令牌；非本机绑定时**必填** |
+| `MCP_HTTP_ALLOWED_HOSTS` | 否 | 自动推导 | HTTP 模式 Host 白名单（逗号分隔）；通配绑定时**必填** |
 | `LOG_LEVEL` | 否 | `info` | debug / info / warn / error |
+
+## 远程 / HTTP 接入
+
+默认 stdio 适合本地单客户端（进程被客户端直接启动）。需要**远程部署 / 多客户端共享**时启用 Streamable HTTP。
+
+涉及**两层独立配置**，请务必区分：
+
+- **服务端**（运行 MCP 进程的机器）：用**环境变量**配置监听地址与认证
+- **客户端**（AI 助手 / IDE 等连入方）：用 **JSON 配置**指定连接地址与令牌
+
+### 第 1 步：服务端启动（环境变量）
+
+```bash
+# 仅本机访问（默认，无需令牌）
+MCP_TRANSPORT=http
+MCP_HTTP_PORT=3100
+npx @iuk-ink/binance-mcp-server
+
+# 对外暴露（必须配令牌认证，否则拒绝启动）
+MCP_TRANSPORT=http
+MCP_HTTP_HOST=0.0.0.0
+MCP_HTTP_PORT=3100
+MCP_HTTP_TOKEN=your-long-secret
+MCP_HTTP_ALLOWED_HOSTS=your-domain.com
+npx @iuk-ink/binance-mcp-server
+```
+
+启动后验证服务已就绪：
+
+```bash
+curl http://127.0.0.1:3100/health      # 期望 {"ok":true,"uptime":<秒>}
+```
+
+### 第 2 步：客户端配置（JSON）
+
+支持 Streamable HTTP 的 MCP 客户端，按「服务端是否设了令牌」二选一：
+
+```json
+// 无令牌（仅本机，服务端未设 MCP_HTTP_TOKEN）
+{
+  "mcpServers": {
+    "binance": { "type": "http", "url": "http://127.0.0.1:3100/mcp" }
+  }
+}
+
+// 有令牌（对外暴露，需在 headers 中回传 Bearer 令牌）
+{
+  "mcpServers": {
+    "binance": {
+      "type": "http",
+      "url": "http://your-server:3100/mcp",
+      "headers": { "Authorization": "Bearer your-long-secret" }
+    }
+  }
+}
+```
+
+> **常见误区**：服务端的 `MCP_HTTP_*` 环境变量作用域仅限服务端进程。客户端无法通过 JSON 配置这些变量来配置服务器——JSON 只管「连到哪 + 带什么认证头」。
+
+### 安全须知（交易服务器暴露 = 任何能连接的客户端都可用你的凭证交易）
+
+- 默认仅监听 `127.0.0.1`（本机），无需令牌
+- 绑定非本机地址时**必须**设置 `MCP_HTTP_TOKEN`（Bearer 认证），否则拒绝启动
+- 通配绑定（`0.0.0.0`）时**必须**设置 `MCP_HTTP_ALLOWED_HOSTS`（Host 白名单，DNS rebinding 防护）
+- 公网部署强烈建议：令牌 + 反向代理 TLS（nginx / Caddy），且令牌应足够长且随机
+- 行情缓存跨请求共享（常驻进程），等价于多客户端复用一个服务实例，注意同一服务实例上的**所有客户端共享同一组币安凭证与风控额度**
 
 ## 工具清单（61 个，主网）
 
@@ -111,20 +182,10 @@ npx @iuk-ink/binance-mcp-server
 
 下单自动完成：价格 / 数量精度向下规整（tickSize / stepSize）、最小名义价值校验、`-1007` 撮合超时后以幂等订单号查证成交状态再决定是否重试。
 
-## 从 2.x 迁移到 3.x
-
-### 破坏性变更
-
-- **MCP SDK**：`@modelcontextprotocol/sdk@1` → `@modelcontextprotocol/server@2`（官方包名变更）
-- **币安接入**：社区包 `binance@3` → 官方 `@binance/derivatives-trading-usds-futures@38`
-- **Node.js**：`>=18` → `>=20`
-- **代理变量**：`HTTP_PROXY` → `BINANCE_PROXY_URL`
-- **工具集 76 → 61**：移除统计辅助域（均值 / 极值 / 四分位等 10 个）与指标独立版 / 信号版冗余变体；旧版 `_direct` 后缀工具改为无后缀直连命名（如 `rsi_direct` → `indicator_rsi`）；风险指标更名（`risk_*` → `analysis_*`）
-- **工具名前缀**：全部工具带域前缀（`market_` / `indicator_` / `analysis_` / `trading_`），AI 客户端既有提示词与流程需按新名适配
-
-### 新增能力
+## 特性亮点
 
 - `market_overview` 一站式快照（单次调用聚合行情 / 指标 / 资金 / 盘口）
+- 多协议接入：本地 stdio 直启，或 Streamable HTTP 远程部署 / 多客户端共享
 - `MCP_TOOL_DOMAINS` 工具域过滤、`BINANCE_USE_DEMO` / `BINANCE_BASE_URL` 环境切换
 - 两级缓存（exchangeInfo 5min + K 线 3s，飞行中去重）
 - `-1007` 撮合超时幂等恢复、时钟偏差启动检测

@@ -76,6 +76,34 @@ describe("meta 序列化", () => {
     await flush();
     assert.ok(lines[0].endsWith("纯消息"), `行尾不应有空白：${JSON.stringify(lines[0])}`);
   });
+
+  test("嵌套对象与 Date 序列化为 JSON（bigint 安全）", async () => {
+    const { logger, lines, flush } = captureLogger("t");
+    const date = new Date("2026-01-01T00:00:00.000Z");
+    logger.info("嵌套", { nested: { a: 1 }, when: date, big: 10n });
+    await flush();
+    assert.ok(lines[0].includes('"nested":{"a":1}'), "嵌套对象应内联序列化");
+    assert.ok(lines[0].includes('"when":"2026-01-01T00:00:00.000Z"'), "Date 应转 ISO 字符串");
+    assert.ok(lines[0].includes('"big":10'), "bigint 应安全转 number");
+  });
+
+  test("undefined 字段被 JSON 省略而非报错", async () => {
+    const { logger, lines, flush } = captureLogger("t");
+    logger.info("跳过 undefined", { keep: 1, drop: undefined });
+    await flush();
+    assert.ok(lines[0].includes('"keep":1'), "保留字段应输出");
+    assert.ok(!lines[0].includes("drop"), "undefined 字段不应输出");
+  });
+
+  test("循环引用触发序列化失败兜底", async () => {
+    const { logger, lines, flush } = captureLogger("t");
+    const circular: Record<string, unknown> = { name: "circ" };
+    circular.self = circular;
+    logger.info("循环引用", circular);
+    await flush();
+    assert.ok(lines[0].includes("[meta 序列化失败]"), "循环引用应走兜底而非崩溃");
+    assert.ok(lines[0].includes("循环引用"), "消息本体仍应输出");
+  });
 });
 
 describe("child 记录器", () => {

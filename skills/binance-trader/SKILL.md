@@ -1,6 +1,8 @@
 ---
 name: binance-trader
 description: 币安 U 本位期货 MCP（binance-mcp-server）使用手册。前置依赖：须先安装 @iuk-ink/binance-mcp-server MCP 服务器。当用户需要加密货币行情分析、技术指标计算、风险量化评估或期货交易执行（下单/撤单/持仓管理/条件单）时使用。涵盖安装自检、工具选择决策、跨工具工作流、交易安全纪律与常见错误恢复剧本。
+metadata:
+  version: "3.1.0"
 ---
 
 # Binance 期货交易指南
@@ -31,6 +33,21 @@ description: 币安 U 本位期货 MCP（binance-mcp-server）使用手册。前
 ```
 
 需要交易功能时在 `env` 补充 `BINANCE_API_KEY` 与 `BINANCE_API_SECRET`；默认测试网（虚拟金）零资金风险。
+
+**接入方式选择**：本地单客户端用上面的 stdio 配置（`command` + `args`）；远程部署 / 多客户端共享用下方 HTTP 配置。两种方式工具行为完全一致，仅客户端配置形态不同——按用户环境二选一即可。
+
+```json
+{
+  "mcpServers": {
+    "binance": {
+      "type": "http",
+      "url": "http://<host>:3100/mcp"
+    }
+  }
+}
+```
+
+**远程部署变体**：若服务器对外暴露并设了 `MCP_HTTP_TOKEN`，需在 HTTP 配置的 `headers` 中回传 Bearer 令牌（`"headers": { "Authorization": "Bearer <token>" }`）。
 
 ## 环境认知
 
@@ -110,4 +127,4 @@ trading_positions → trading_account → （策略层面）analysis_drawdown / 
 | 名义价值低于最小限制 | 数量 × 价格不足门槛（如 BTCUSDT 测试网约 50 USDT）：加大数量或调整价格后重试 |
 | `No need to change margin type` | 非错误，官方幂等响应——目标模式已是当前模式，无需任何处理 |
 | `Add margin only support for isolated position` | 全仓模式下不可调逐仓保证金：先 `trading_set_margin_type` 切 ISOLATED 再操作 |
-| `-1021` 时间窗超出 / 启动时钟偏差告警 | 本机时钟与交易所偏差过大：校准系统时间（NTP 同步）即可，服务端无需改动 |
+| `-1021` 时间窗超出 / 启动时钟偏差告警 | 本机时钟与交易所偏差过大，多为**间歇性**（时钟偏差 + 偶发链路延迟叠加）：可**重试一次**；若持续失败再校准系统时间（NTP 同步）。服务端代码无需改动 |

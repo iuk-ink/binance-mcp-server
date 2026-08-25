@@ -22,7 +22,7 @@ import { fileURLToPath } from "node:url";
 import type { ZodType } from "zod/v4";
 import { LOG_LEVEL_VALUES } from "../utils/logger.js";
 import { envBool, envEnum, envInt, envStr, redact } from "./env.js";
-import { binanceConfigSchema } from "./schema.js";
+import { binanceConfigSchema, isWildcardBind } from "./schema.js";
 import type { BinanceConfig, ProxyConfig, ToolDomain } from "./schema.js";
 
 /**
@@ -125,6 +125,50 @@ function parseToolDomains(raw: string | undefined): ToolDomain[] | undefined {
 }
 
 // ============================================================================
+//  内部：HTTP 传输配置组装
+// ============================================================================
+
+/**
+ * 解析 MCP_HTTP_ALLOWED_HOSTS 为 Host 白名单数组
+ *
+ * 逗号分隔、去空白、忽略空项；空串或未配置返回 undefined（交由推导逻辑决定缺省值）。
+ *
+ * @param raw - MCP_HTTP_ALLOWED_HOSTS 原始值
+ * @returns Host 白名单数组；未配置时返回 undefined
+ */
+function parseHostList(raw: string | undefined): string[] | undefined {
+  if (!raw) return undefined;
+  const items = raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  return items.length > 0 ? items : undefined;
+}
+
+/**
+ * 组装传输配置块（stdio 缺省 / http 显式启用）
+ *
+ * allowedHosts 推导规则（R3）：特定 IP / 主机名绑定且未显式配置时缺省 = [绑定地址]
+ * （Host 头必为该地址）；通配绑定无法推导，交由 schema superRefine fail-fast 拦截。
+ *
+ * @returns 传输配置原始对象（待 zod 校验）
+ */
+function buildTransportConfig() {
+  const mode = envEnum("MCP_TRANSPORT", ["stdio", "http"] as const, "stdio");
+  const host = envStr("MCP_HTTP_HOST", "127.0.0.1");
+  return {
+    mode,
+    http: {
+      host,
+      port: envInt("MCP_HTTP_PORT", 3100),
+      allowedHosts: parseHostList(envStr("MCP_HTTP_ALLOWED_HOSTS", "")) ??
+        (isWildcardBind(host) ? [] : [host]),
+      token: envStr("MCP_HTTP_TOKEN", ""),
+    },
+  };
+}
+
+// ============================================================================
 //  内部：deep freeze
 // ============================================================================
 
@@ -203,6 +247,7 @@ export function loadConfig(): Readonly<BinanceConfig> {
       serverVersion: envStr("MCP_SERVER_VERSION", packageVersion),
       logLevel: envEnum("LOG_LEVEL", LOG_LEVEL_VALUES, "info"),
       enabledToolDomains: parseToolDomains(envStr("MCP_TOOL_DOMAINS", "")),
+      transport: buildTransportConfig(),
     },
     "binance",
   );
@@ -248,6 +293,11 @@ function printSummary(config: Readonly<BinanceConfig>): void {
       ? `${config.proxy.host}:${config.proxy.port} (${config.proxy.protocol})`
       : "未配置",
     domains: config.enabledToolDomains.join(","),
+    transport:
+      config.transport.mode === "http"
+        ? `http://${config.transport.http.host}:${config.transport.http.port}/mcp` +
+          (config.transport.http.token !== "" ? " (Bearer 认证)" : "")
+        : "stdio",
     log: `level=${config.logLevel}`,
   };
 

@@ -9,7 +9,12 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { envBool, envEnum, envInt, envStr, redact } from "../env.js";
-import { binanceConfigSchema } from "../schema.js";
+import {
+  binanceConfigSchema,
+  isLocalhostBind,
+  isWildcardBind,
+  transportConfigSchema,
+} from "../schema.js";
 
 describe("env 读取器", () => {
   test("envStr 读取并回退默认值", () => {
@@ -79,6 +84,7 @@ describe("binanceConfigSchema 跨字段校验", () => {
     serverVersion: "1.0.0",
     logLevel: "info",
     enabledToolDomains: ["market", "trading"],
+    transport: { mode: "stdio", http: { host: "127.0.0.1", port: 3100, allowedHosts: [], token: "" } },
   };
 
   test("合法配置通过", () => {
@@ -104,5 +110,87 @@ describe("binanceConfigSchema 跨字段校验", () => {
       enabledToolDomains: ["market", "invalid"],
     });
     assert.equal(result.success, false);
+  });
+});
+
+describe("transportConfigSchema 传输配置", () => {
+  const httpBase = {
+    mode: "http",
+    http: { host: "127.0.0.1", port: 3100, allowedHosts: ["127.0.0.1"], token: "" },
+  } as const;
+
+  test("localhost 绑定无令牌可通过", () => {
+    const result = transportConfigSchema.safeParse(httpBase);
+    assert.equal(result.success, true);
+  });
+
+  test("非 localhost 绑定缺令牌被拦截", () => {
+    const result = transportConfigSchema.safeParse({
+      ...httpBase,
+      http: { ...httpBase.http, host: "192.168.1.10" },
+    });
+    assert.equal(result.success, false);
+    assert.match(JSON.stringify(result.error?.issues ?? []), /MCP_HTTP_TOKEN/);
+  });
+
+  test("非 localhost 绑定配置令牌后通过", () => {
+    const result = transportConfigSchema.safeParse({
+      ...httpBase,
+      http: { ...httpBase.http, host: "192.168.1.10", token: "secret-token" },
+    });
+    assert.equal(result.success, true);
+  });
+
+  test("通配绑定缺 Host 白名单被拦截", () => {
+    const result = transportConfigSchema.safeParse({
+      ...httpBase,
+      http: { ...httpBase.http, host: "0.0.0.0", token: "secret-token", allowedHosts: [] },
+    });
+    assert.equal(result.success, false);
+    assert.match(JSON.stringify(result.error?.issues ?? []), /MCP_HTTP_ALLOWED_HOSTS/);
+  });
+
+  test("通配绑定配置白名单后通过", () => {
+    const result = transportConfigSchema.safeParse({
+      ...httpBase,
+      http: { ...httpBase.http, host: "0.0.0.0", token: "t", allowedHosts: ["example.com"] },
+    });
+    assert.equal(result.success, true);
+  });
+
+  test("非法传输模式被拦截", () => {
+    const result = transportConfigSchema.safeParse({ ...httpBase, mode: "ws" });
+    assert.equal(result.success, false);
+  });
+
+  test("端口越界被拦截", () => {
+    const result = transportConfigSchema.safeParse({
+      ...httpBase,
+      http: { ...httpBase.http, port: 70000 },
+    });
+    assert.equal(result.success, false);
+  });
+
+  test("stdio 模式不校验 HTTP 安全约束", () => {
+    // stdio 下 http 块仅是占位配置，即使 host 通配且无令牌也应放行
+    const result = transportConfigSchema.safeParse({
+      mode: "stdio",
+      http: { host: "0.0.0.0", port: 3100, allowedHosts: [], token: "" },
+    });
+    assert.equal(result.success, true);
+  });
+
+  test("localhost 系绑定判定覆盖 IPv6", () => {
+    assert.equal(isLocalhostBind("::1"), true);
+    assert.equal(isLocalhostBind("[::1]"), true);
+    assert.equal(isLocalhostBind("LocalHost"), true);
+    assert.equal(isLocalhostBind("192.168.1.10"), false);
+  });
+
+  test("通配绑定判定覆盖 IPv6 与空串", () => {
+    assert.equal(isWildcardBind("0.0.0.0"), true);
+    assert.equal(isWildcardBind("::"), true);
+    assert.equal(isWildcardBind(""), true);
+    assert.equal(isWildcardBind("127.0.0.1"), false);
   });
 });

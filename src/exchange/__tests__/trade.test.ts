@@ -50,19 +50,21 @@ describe("TradeService 下单", () => {
 
   test("下单前精度规整并提交", async () => {
     const client = createFakeClient({
-      newOrder: {
-        orderId: 1,
-        clientOrderId: "mcp_test",
-        symbol: "BTCUSDT",
-        side: "BUY",
-        type: "LIMIT",
-        status: "NEW",
-        price: "50000.12",
-        origQty: "1.234",
-        executedQty: "0",
-        avgPrice: "0",
-        reduceOnly: "false",
-      },
+      newOrder: () => ({
+        data: async () => ({
+          orderId: 1,
+          clientOrderId: "mcp_test",
+          symbol: "BTCUSDT",
+          side: "BUY",
+          type: "LIMIT",
+          status: "NEW",
+          price: "50000.12",
+          origQty: "1.234",
+          executedQty: "0",
+          avgPrice: "0",
+          reduceOnly: "false",
+        }),
+      }),
     });
     const trade = new TradeService(client, fakeMarket());
     const result = await trade.placeOrder({
@@ -75,6 +77,73 @@ describe("TradeService 下单", () => {
     assert.equal(result.orderId, 1);
     assert.equal(result.price, 50000.12);
     assert.equal(result.origQty, 1.234);
+  });
+
+  test("配置 recvWindow 时注入到下单请求参数", async () => {
+    let captured: Record<string, unknown> = {};
+    const client = createFakeClient({
+      newOrder: (params: Record<string, unknown>) => {
+        captured = params;
+        return {
+          data: async () => ({
+            orderId: 1,
+            clientOrderId: "mcp_test",
+            symbol: "BTCUSDT",
+            side: "BUY",
+            type: "LIMIT",
+            status: "NEW",
+            price: "50000",
+            origQty: "1",
+            executedQty: "0",
+            avgPrice: "0",
+            reduceOnly: "false",
+          }),
+        };
+      },
+    });
+    // 第三个构造参数为 recvWindow：验证其真正送达 SDK 请求（配置链路最后一环）
+    const trade = new TradeService(client, fakeMarket(), 8000);
+    await trade.placeOrder({
+      symbol: "BTCUSDT",
+      side: "BUY",
+      type: "LIMIT",
+      quantity: 1,
+      price: 50000,
+    });
+    assert.equal(captured.recvWindow, 8000, "recvWindow 应注入到 SDK 请求参数");
+  });
+
+  test("未配置 recvWindow 时不注入该参数", async () => {
+    let captured: Record<string, unknown> = {};
+    const client = createFakeClient({
+      newOrder: (params: Record<string, unknown>) => {
+        captured = params;
+        return {
+          data: async () => ({
+            orderId: 1,
+            clientOrderId: "mcp_test",
+            symbol: "BTCUSDT",
+            side: "BUY",
+            type: "LIMIT",
+            status: "NEW",
+            price: "50000",
+            origQty: "1",
+            executedQty: "0",
+            avgPrice: "0",
+            reduceOnly: "false",
+          }),
+        };
+      },
+    });
+    const trade = new TradeService(client, fakeMarket());
+    await trade.placeOrder({
+      symbol: "BTCUSDT",
+      side: "BUY",
+      type: "LIMIT",
+      quantity: 1,
+      price: 50000,
+    });
+    assert.equal(captured.recvWindow, undefined, "未配置时不应携带 recvWindow");
   });
 
   test("名义价值低于 minNotional 被拦截", async () => {
@@ -265,6 +334,22 @@ describe("TradeService 改单", () => {
     assert.equal(captured.price, 50000.12, "价格应按 tickSize 规整");
     assert.equal(result.orderId, 5);
     assert.equal(result.origQty, 1.234);
+  });
+});
+
+describe("TradeService 改单边界", () => {
+  test("modifyOrder 缺 orderId 与 origClientOrderId 抛错", async () => {
+    const trade = new TradeService(createFakeClient({}), fakeMarket());
+    await assert.rejects(
+      () =>
+        trade.modifyOrder({
+          symbol: "BTCUSDT",
+          side: "BUY",
+          quantity: 1,
+          price: 50000,
+        }),
+      /orderId 或 origClientOrderId/,
+    );
   });
 });
 

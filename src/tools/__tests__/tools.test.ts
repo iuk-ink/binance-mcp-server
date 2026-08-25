@@ -423,6 +423,35 @@ describe("market_overview 指标层", () => {
     assert.equal(indicators.adx?.recent?.length, 4, "ADX@30 仅 4 个稳定值，recent 截短");
     assert.equal(indicators.rsi?.recent?.length, 6, "RSI@30 有 16 个稳定值，recent 取满");
   });
+
+  test("E2 单端点失败时整包容错且 completeness 标记降级", async () => {
+    // 让 fundingHistory 端点抛错，其余端点正常：应返回整包、该块降级、其余存活
+    const market = fakeFullMarket();
+    (market as { getFundingRateHistory?: unknown }).getFundingRateHistory = async () => {
+      throw new Error("费率历史接口超时");
+    };
+    const result = (await buildMarketOverviewToolDef(fakeContext({ market })).handler({
+      symbol: "BTCUSDT",
+      interval: "1h",
+      limit: 100,
+    })) as {
+      meta?: {
+        completeness?: Record<string, boolean>;
+        error?: string | null;
+      };
+      indicators?: { rsi?: { latest?: number | null } };
+      price?: unknown;
+    };
+    // 整包仍成功返回（不抛错）
+    assert.ok(result, "单个端点失败不应中断整包");
+    // 失败端点的 completeness 标记为 false
+    assert.equal(result.meta?.completeness?.fundingHistory, false, "fundingHistory 应标记降级");
+    // 正常端点仍存活
+    assert.equal(result.meta?.completeness?.klines, true, "klines 端点应仍可用");
+    assert.equal(result.meta?.completeness?.ticker, true, "ticker 端点应仍可用");
+    // 派生指标层仍计算
+    assert.equal(result.indicators?.rsi?.latest, 100, "端点失败不应影响指标层派生");
+  });
 });
 
 describe("market 工具入参校验", () => {
@@ -1007,5 +1036,71 @@ describe("trading 工具入参校验", () => {
         quantity: 1,
       }),
     );
+  });
+});
+
+describe("trading 工具 handler 行为（spy 注入）", () => {
+  /** 记录调用的持仓模式 spy 交易服务 */
+  function spyPositionModeTrade(): TradeService & {
+    calls: string[];
+    mode: { dualSidePosition: boolean };
+  } {
+    const calls: string[] = [];
+    const mode = { dualSidePosition: false };
+    return {
+      calls,
+      mode,
+      getPositionMode: async () => ({ ...mode }),
+      setPositionMode: async (dual: boolean) => {
+        calls.push(`setPositionMode:${dual}`);
+        return {};
+      },
+      // 其余可能被 handler 路径接触的方法置为不可达（双模式仅用上面两个）
+    } as unknown as TradeService & { calls: string[]; mode: { dualSidePosition: boolean } };
+  }
+
+  /** 按工具名构造含交易服务的工具定义 */
+  function tradingDefWith(trade: TradeService, name: string) {
+    return buildTradingToolDefs(
+      fakeContext({ account: {} as unknown as AccountService, trade }),
+    ).find((d) => d.name === name);
+  }
+
+  test("trading_position_mode 不传 dual 走查询（不切换）", async () => {
+    const trade = spyPositionModeTrade();
+    const def = tradingDefWith(trade, "trading_position_mode");
+    assert.ok(def);
+    const result = await def.handler({});
+    assert.deepEqual(result, trade.mode, "应返回查询的持仓模式");
+    assert.equal(trade.calls.length, 0, "不传 dual 不应触达 setPositionMode");
+  });
+
+  test("trading_position_mode 传 dual=true 走切换并返回目标模式", async () => {
+    const trade = spyPositionModeTrade();
+    const def = tradingDefWith(trade, "trading_position_mode");
+    assert.ok(def);
+    const result = await def.handler({ dual: true });
+    assert.deepEqual(result, { dualSidePosition: true }, "切换后应返回目标模式");
+    assert.deepEqual(trade.calls, ["setPositionMode:true"], "应触发一次双向切换");
+  });
+
+  test("trading_position_mode 传 dual=false 走单向切换", async () => {
+    const trade = spyPositionModeTrade();
+    const def = tradingDefWith(trade, "trading_position_mode");
+    assert.ok(def);
+    const result = await def.handler({ dual: false });
+    assert.deepEqual(result, { dualSidePosition: false });
+    assert.deepEqual(trade.calls, ["setPositionMode:false"]);
+  });
+
+  test("trading_set_margin_type 校验 marginType 枚举", () => {
+    const def = tradingDefWith({} as unknown as TradeService, "trading_set_margin_type");
+    assert.ok(def);
+    assert.throws(
+      () => def.schema.parse({ symbol: "BTCUSDT", marginType: "INVALID" }),
+      /Invalid option/,
+    );
+    assert.ok(def.schema.parse({ symbol: "BTCUSDT", marginType: "ISOLATED" }));
+    assert.ok(def.schema.parse({ symbol: "BTCUSDT", marginType: "CROSSED" }));
   });
 });
